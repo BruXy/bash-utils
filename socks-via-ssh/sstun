@@ -1,0 +1,186 @@
+#!/bin/bash
+#
+# Author: Martin 'BruXy' Bruchanov, bruchy at gmail
+# Version: 0.9 (Wed May 10 13:38:32 ADT 2017)
+# URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
+#
+#%A
+# SOCKS SSH Tunnels
+# =================
+#
+# Usage: 
+#   sstun start|stop|restart|status|help
+#
+# Configuration:
+#
+#   1. Create your SSH server entries in ~/.ssh/config.
+#   2. Specify option DynamicForward <PORT>, to open SOCKS tunnel
+#   3. Edit this script and update SSH_HOSTS array with list of hosts.
+#   4. Run this script ./sstun start. 
+#%B
+
+####################
+# Global variables #
+####################
+
+LOG="/tmp/${0}.log"
+LOCK="$HOME/.sstun.run"
+TUN_BIND="localhost"
+SSH_HOSTS=( 
+    "regnet"
+    "freeshell"
+    "sat"
+    "home"
+)
+
+#############
+# Functions #
+#############
+
+#=== FUNCTION ============================================================
+#        Name: print_help 
+# Description: Display header help text between #%A and #%B tokens. 
+#=========================================================================
+
+function print_help() {
+    sed -ne '/^#%A/,/^#%B/{s/\(^#\|^#%[AB]\)//p}' $0
+}
+
+#=== FUNCTION ============================================================
+#        Name: check_lockfile
+# Description: Check if lock file exist, when it exist it will display 
+#              details about TCP connections provided by SSH processes.
+#     Returns: 1 when lockfile is present, 0 when does not.
+#=========================================================================
+
+function check_lockfile() {
+    local exists=0
+    if [ -a "$LOCK" ] ; then
+        exists=1
+        printf "Lock file exists ($LOCK)!\n" 2>&1
+        printf "List of running processes: \n" 2>&1
+        for pid in $(sed -ne '/^SSH:/s///p' $LOCK)
+        do
+            conn=$(lsof -p $pid | grep -E "ESTABLISHED|LISTEN")
+            if [ -z "$conn" ] ; then
+                printf "$pid is not running!\n"  2>&1
+            else
+                printf "PID $pid is running:\n" 2>&1
+                printf "$conn\n" 2>&1
+            fi
+        done
+    fi
+    return $exists
+}
+
+
+#=== FUNCTION ============================================================
+#        Name: create_tunnels
+# Description: Starts autossh in background, stores its PID in $LOCK file
+#              and also PID of its child process ssh which maintains SSH
+#              communication itself. Lock file is later used for connection
+#              check and for disabling tunnels. 
+# Parameter 1: Reads list of hosts from SSH_HOSTS array. 
+#=========================================================================
+
+function create_tunnels() {
+    for host in ${SSH_HOSTS[*]}
+    do
+        # Autossh will create a new process and its PID is not
+        # the !$ but it is stored in AUTOSSH_PIDFILE. Autossh
+        # will fork child process which executes ssh connection
+        # itself.
+
+        export AUTOSSH_PIDFILE=/tmp/autossh-$[RANDOM].pid
+        autossh -M 0 -v -t -f -N $host &
+        wait $! # it will take same time to initialize autossh
+        pid=$(cat $AUTOSSH_PIDFILE)
+        rm -f $AUTOSSH_PIDFILE
+        echo "$0: started tunnel on host $host with PID = $pid"
+        
+        # Store autossh and ssh PIDs:
+        echo "AutoSSH: $pid" >> $LOCK
+        # - get child process PID when Parent PID is given
+        echo "SSH: $(ps --ppid $pid -o pid=)" >> $LOCK
+    done    
+}
+
+#=== FUNCTION ============================================================
+#        Name: stop_tunnels 
+# Description: Send SIGINT signal to all autossh processes listed in lock
+#              file. Delete lock file. 
+#=========================================================================
+
+function stop_tunnels() {
+    for pid in $(sed -ne '/^AutoSSH:/s///p' $LOCK)
+    do
+        printf "Sending SIGINT to $pid\n"
+        kill -s SIGINT $pid
+        retval=$?
+        printf "kill retval = $retval\n"
+    done
+    rm -f $LOCK
+}
+
+
+#=== FUNCTION ============================================================
+#        Name: ip_status 
+# Description: Check remote ip over SOCKS proxy. It will check all enabled
+#              SSH processes, detects open ports and get public IP by
+#              HTTP request on http://ifconfig.co/ site.
+#=========================================================================
+
+function ip_status() {
+    for pid in $(sed -ne '/^SSH:/s///p' $LOCK)
+    do
+        port=$(lsof -p $pid | sed -ne 's/.* localhost:\([0-9]*\) .*/\1/p')
+        remote_ip=$(curl --silent --socks5 $TUN_BIND:$port http://ifconfig.co/)
+        if [ ! -z "$remote_ip" ] ; then
+            echo "$0: SOCKS proxy on port $TUN_BIND:$port returns: $remote_ip, " \
+                $(dig +short -x $remote_ip | sed -e "s/\.%//")
+        else
+            echo "$0: No proxy enabled on port $port!"
+        fi 
+    done
+}
+
+########
+# Main #
+########
+
+# Display help
+if [ $# -eq 0 ] ; then print_help 1>&2; exit 1; fi
+if [[ "$*" =~ -h ]] ; then print_help; exit 0; fi
+
+case $1 in
+    start)
+        if check_lockfile ; then
+            create_tunnels
+            ip_status
+            exit 0
+        else
+            printf "No tunnel(s) enabled!\n"
+            exit 1   
+        fi
+        ;;
+    stop)
+        stop_tunnels
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    status)
+        check_lockfile
+        ip_status
+        ;;
+    help)
+        print_help
+        exit 1
+        ;;
+    *)
+        printf "Uknown command: '$1'!\n" 2>&1
+        exit 1
+        ;;
+esac
+
