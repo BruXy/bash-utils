@@ -1,0 +1,240 @@
+#!/bin/sh
+###############################################################################
+#                                                                             # 
+#    Martin Bruchanov, bruxy at regnet dot cz                                 #
+#                                                                             # 
+#    http://bruxy.regnet.cz/                                                  #
+#                                                                             # 
+#    Version: 1.02 (So led  8 16:29:22 CET 2011)                              #
+#                                                                             # 
+###############################################################################
+
+#default output format
+OUTPUT_FORMAT=PDF
+# 1 .. using decimal point instead of decimal separator
+POINT=0
+# program/script with LaTeX input and DVI output
+LATEX=cslatex
+# add this default number to EPS bounding box
+ADD_TO_BORDER=2 
+
+########################
+# rasterize output info bitmap
+RASTERIZE=0
+# default width of output PNG
+PNG_SIZE=640
+# bitmap enhancing
+UNSHARP_RADIUS=1.0
+
+###############################################################################
+
+# definition of color escape sequences for ANSI terminal
+RED="\033[01;31m"
+GREEN="\033[01;32m"
+
+print_help(){
+    echo "Gnuplot to PDF via METAPOST:"
+    echo "Usage:        plot [param] input_file"
+    echo "Parameters:     -e   ... Output to Encapsulated PostScript"
+    echo "                -p   ... Use decimal point instead of ','"
+    echo "                -b N ... change BoundigBox by N (default N = $ADD_TO_BORDER)"
+    echo "                -r   ... rasterize to PNG"
+    echo "                -s N ... together with -r define bitmap width N (default N = $PNG_SIZE)"
+    echo
+}
+
+color_echo(){
+# 1 -- color escape sequncy
+# 2 -- string
+# \033[0m -- reset color settings
+  echo -e "$1 $2 \033[0m"
+}
+
+test_return(){
+# 1 -- return code $?
+# 2 -- description of operation
+echo -e -n $2:
+COL=40
+# move cursor to column $COL 
+echo -en "\033[${COL}G"
+if [ $1 -eq 0 ] 
+then
+	color_echo $GREEN OK
+else
+	color_echo $RED FALSE
+	exit 1
+fi
+}
+
+###############################################################################
+
+if [ $# -lt 1 ] # print help
+then
+    print_help
+    exit
+fi
+
+
+while getopts "etb:prs:" name
+do
+        case $name in
+	t) POINT="OFF"
+	;;
+    e) OUTPUT_FORMAT=EPS
+        ;;
+	p) POINT=1
+	;;
+	b) ADD_TO_BORDER=$OPTARG
+	;;
+	r) RASTERIZE=1
+	;; 
+	s) PNG_SIZE=$OPTARG
+	;;
+	*) 
+	   print_help
+	   exit 
+	;;
+   esac
+done
+
+# last given parameter should be input file
+
+eval INPUT_FILE=\$$# 
+
+OUTPUT=`grep -v \# $INPUT_FILE | grep output | sed 's/.*"\(.*\)".*$/\1/'`
+OUTBASE=`basename $OUTPUT .mp`
+TMP_FILE=$OUTBASE-$$
+
+################################################################################
+
+gnuplot $INPUT_FILE
+test_return $? "Gnuplot processing"
+
+# change TeX definition of decimal separator 
+if [ $POINT -eq 0 ] 
+then
+	( echo 'verbatimtex
+	\mathcode`.="002C
+	etex
+	' && cat $OUTBASE.mp ) > $TMP_FILE.mp
+	rm $OUTBASE.mp
+else
+	mv $OUTBASE.mp $TMP_FILE.mp
+fi
+
+mpost $TMP_FILE.mp > /dev/null 2>&1
+test_return $? "Metapost translation"
+rm $TMP_FILE.mp* $TMP_FILE.log  
+
+###### LaTeX Translation #######################################################
+
+echo "\documentclass[a4paper, 11pt]{article}
+\usepackage{czech}
+\usepackage{a4wide}
+\usepackage{graphics}
+\usepackage{amssymb}
+
+\begin{document}
+\pagestyle{empty}
+\begin{center}
+\scalebox{1}{
+	\includegraphics{$TMP_FILE.0}
+}
+\end{center}
+\end{document}
+" | ${LATEX} > /dev/null 2>&1
+
+test_return $? "LaTeX translation"
+
+rm texput.log texput.aux 
+
+
+dvips texput.dvi -o texput.ps > /dev/null 2>&1
+test_return $? "DVI to Postsript"
+rm texput.dvi 
+
+ps2eps texput.ps
+rm texput.ps $TMP_FILE.0
+
+#exit #EDIT
+
+
+##### changing BoundingBox in EPS file ########################################
+
+BBOX=`head -n 15 texput.eps | grep "%%BoundingBox:" | sed -e "s/%%.*: //"`
+
+# Bounding box define size of picture. It is given as four numbers:
+# %%BoundingBox: x1 y1 x2 y2
+#
+#               x2         So, we need to substract N the args x1, y1
+#     +---------+ y2       and add N to x2, y2 to resize borders.
+#     |         |
+#     |         |
+#  y1 +---------+
+#     x1
+#
+
+BBOX_OUT=""; I=0
+
+#echo -n "Input BBox $BBOX changed to "
+
+for num in $BBOX
+do
+    if [ $I -le 1 ]; then ADD=$((0 - ($ADD_TO_BORDER))); else ADD=$ADD_TO_BORDER; fi
+#    num=$(($num + ($ADD)))
+    num=`echo "$num + ($ADD)" | bc`
+    BBOX_OUT="$BBOX_OUT $num"
+    I=$(($I+1))
+done
+
+#echo $BBOX_OUT.
+
+sed -e "s/%%BoundingBox: .*/%%BoundingBox: $BBOX_OUT/" texput.eps > $TMP_FILE.eps
+
+test_return $? "Bounding box resized by $ADD_TO_BORDER"
+
+rm texput.eps
+
+##### Output format settings #################################################
+
+if [ $OUTPUT_FORMAT = "EPS" ] 
+then
+	echo "Output: EPS '$OUTBASE.eps'"	
+	mv $TMP_FILE.eps $OUTBASE.eps	
+else
+	epstopdf --outfile=$TMP_FILE.pdf $TMP_FILE.eps
+	rm $TMP_FILE.eps	
+	if [ $RASTERIZE -eq 0 ]; 
+	then 
+		echo "Output: PDF '$OUTBASE.pdf'"
+		mv $TMP_FILE.pdf $OUTBASE.pdf
+	fi
+fi
+
+##### Rasterization to PNG ###################################################
+
+if [ $RASTERIZE -eq 1 ] 
+then
+	gs -quiet -r600 -sDEVICE=png256  -dNOPAUSE -dBATCH  \
+		-sOutputFile=$TMP_FILE.png $TMP_FILE.pdf
+	test_return $? "GhostScript rasterization"
+	convert \
+	  -geometry "$PNG_SIZE" \
+	  -unsharp "$UNSHARP_RADIUS" \
+		$TMP_FILE.png png:${TMP_FILE}2.png
+	rm $TMP_FILE.png
+	# convert exit code is 0 when error occured ;(
+	if [ -e "${TMP_FILE}2.png" ]
+	then
+		test_return 0 "Width of '$OUTBASE.png' is $PNG_SIZE"
+		mv ${TMP_FILE}2.png $OUTBASE.png
+		rm $TMP_FILE.pdf
+	else 
+		test_return 1 "ImageMagick resizing"
+	fi
+
+	echo "Output: PNG '$OUTBASE.png'"
+fi
+
+exit 0
+
