@@ -1,0 +1,7 @@
+#!/bin/bash
+for node in $(docker node ls --filter role=worker --format '{{ .Hostname }}');
+do
+    tags=$(docker node inspect "$node" -f '{{.Spec.Labels}}' |\
+        sed -e 's/^map\[//' -e 's/\]$//')
+    printf "%s: %s\n" "$node" "$tags"
+done | sort

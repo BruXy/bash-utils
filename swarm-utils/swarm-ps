@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Display list of running containers in similar output as 'docker ps'.
+#
+
+# Get a list of running containers
+SERVICE_LIST=$(docker service ls --format "{{.Name}} {{.Replicas}}" | \
+    grep -vE "0/[0-9]+" | \
+    cut -d' ' -f 1)
+
+# Format output in columns:
+(
+printf "ID;IMAGE;STATUS;NAME;NODE\n"
+for srv in $SERVICE_LIST
+do
+    docker service ps $srv -f desired-state=running \
+        --format="{{.ID}};{{.Image}};{{.CurrentState}};{{.Name}};{{.Node}}"
+done
+) | column -s';' -t
+

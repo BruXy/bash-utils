@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# Show logs of given container.
+#
+# Also accepts parameters of 'docker service logs --help'.
+#
+
+SERVICE=$*
+
+# Option -t shows timestamp and deployment info as log prefix:
+
+docker service logs $SERVICE

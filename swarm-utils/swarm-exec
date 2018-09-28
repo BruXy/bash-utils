@@ -1,0 +1,75 @@
+#!/bin/bash
+ARGV_0=$0
+SERVICE=$1
+shift
+COMMAND="$*" # store all other parameters as possible commands
+VERBOSE=1
+
+#############
+# Functions #
+#############
+
+function vprint() {
+    if [ $VERBOSE -eq 1 ] ; then
+        printf "$ARGV_0: Info -- $*" >&2
+    fi
+}
+
+function check_replicas() {
+    local replicas=$2
+    local service=$1
+    vprint "Service '$service' replica schema: '$replicas'\n"
+    if [[ "$replicas" != "1/1" ]] ; then
+        printf "${ARGV_0}: Error -- Container is replicated to several nodes:\n"
+        docker service ps $service -f desired-state=running
+        printf "${ARGV_0}: exiting... \n"
+        exit 1
+    fi 1>&2
+}
+
+function get_stack() {
+    local service_name=$1
+    local return_stack=''
+    local replicas=''
+
+    return_stack=$(docker service inspect $service_name \
+      --format "{{ index .Spec.TaskTemplate.ContainerSpec.Labels \"com.docker.stack.namespace\" }}")
+
+    vprint "Found stack '$return_stack' for service '$service_name'\n"
+
+    if [ ! -z "$return_stack" ] ; then
+        check_replicas $(docker service ls --format='{{.Name}} {{.Replicas}}' |\
+                         grep "^$service_name ")
+        echo $return_stack
+    fi
+}
+
+function worker_exec() {
+    local service_name=$2
+    local stack_name=$1
+    local command=$3
+    node=$(docker stack ps -f name=$service_name
+           -f desired-state=running --format '{{.Node}}' ${stack_name})
+    node_ip=$(docker node inspect --format '{{.Status.Addr}}' ${node})
+    printf "${ARGV_0}: Executing your command on node: '%s' (%s)\n" \
+             $node $node_ip
+    container_id=$(docker inspect --format \
+            '{{ .Status.ContainerStatus.ContainerID }}' \
+             $(docker service ps ${service_name} -q -f desired-state=running))
+    printf "${ARGV_0}: ID of '%s' is %s.\n" $service_name $container_id
+    docker --host tcp://${node_ip}:2375/ exec -it ${container_id} $command
+}
+
+########
+# Main #
+########
+
+[ -z "$SERVICE" ] && { printf "Usage" 1>&2; exit 1; }
+[ -z "$COMMAND" ] && { printf "No command given!" 1>&2; exit 1; }
+
+vprint "User parameters: SERVICE='$SERVICE', COMMAND='$COMMAND'\n"
+
+STACK=$(get_stack $SERVICE)
+[ $? -ne 0 ] && exit 1
+worker_exec $STACK $SERVICE "$COMMAND"
+

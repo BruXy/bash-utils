@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# Restart container deployed in swarm cluster. It will stop and redeploy
+# the conteiner, so it may be started on a different node.
+#
+# Some containers can be forced to stay on a particular node using swarm labels.
+#
+
+SERVICE=$1
+printf "Redeploying service: '%s'\n" $SERVICE
+docker service update --force $SERVICE

@@ -1,0 +1,51 @@
+#!/bin/bash
+#%A
+# Usage: swarm COMMAND [CONTAINER]
+#
+# Simple wrapper of basic docker commands on the swarm cluster.
+#
+# Commands:
+#
+#   exec     Run a command in a running container
+#   logs     Fetch the logs of a container
+#   ps       Show running containers
+#   restart  Restart container, may redeploy it on a different node
+#   tags     Show tags assosiated for all worker nodes
+#
+# Container:
+#
+#   Use container/service name instead of ID. Do not add numerical
+#   suffix showing number of replicas, e.g. when uat_api.1 use
+#   just 'uat_api'.
+#
+#%B
+
+function usage() {
+    sed -n '/^#%A/,/^#%B/s/#[%AB]*//p' $0
+}
+
+COMMAND=$1
+shift
+PARAMS=$@
+
+function __main__() {
+    local command=$1
+    [ -z "$command" ] && {
+        echo "$0: No parameter given!"
+        usage
+        exit 1
+    }
+    case $command in
+        ps)      swarm-ps ;;
+        restart) swarm-restart $(eval echo $PARAMS) ;;
+        exec)    swarm-exec    $(eval echo $PARAMS) ;;
+        logs)    swarm-logs    $(eval echo $PARAMS) ;;
+        tags)    swarm-tags ;;
+        help)    usage ; exit 0 ;;
+        *)       echo "Uknown parameters: '$command'!" ;;
+    esac
+}
+
+if [[ $0 =~ swarm ]] ; then
+    __main__ $COMMAND
+fi
