@@ -48,7 +48,7 @@ function worker_exec() {
     local service_name=$2
     local stack_name=$1
     local command=$3
-    node=$(docker stack ps -f name=$service_name
+    node=$(docker stack ps -f name=$service_name \
            -f desired-state=running --format '{{.Node}}' ${stack_name})
     node_ip=$(docker node inspect --format '{{.Status.Addr}}' ${node})
     printf "${ARGV_0}: Executing your command on node: '%s' (%s)\n" \

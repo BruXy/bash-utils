@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# Redeploy all containers which are part of given stack.
+#
+# List stacks: docker stack ls
+#
+STACK=$1
+printf "Redeploying stack: '%s'\n" $STACK
+docker stack ps --format 'table {{ .Name }}\t{{ .DesiredState }}' $STACK | \
+    grep Running | cut -f 1 -d' ' | sed -e 's/\.[0-9]$//' | sort -u  | \
+    xargs --max-lines=1 docker service update --force
+

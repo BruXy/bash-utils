@@ -1,6 +1,6 @@
 #!/bin/bash
 #%A
-# Usage: swarm COMMAND [CONTAINER]
+# Usage: swarm COMMAND [CONTAINER|STACK]
 #
 # Simple wrapper of basic docker commands on the swarm cluster.
 #
@@ -10,6 +10,7 @@
 #   logs     Fetch the logs of a container
 #   ps       Show running containers
 #   restart  Restart container, may redeploy it on a different node
+#   redeploy Restart and redeploy all containers from a selected stack.
 #   tags     Show tags assosiated for all worker nodes
 #
 # Container:
@@ -17,6 +18,8 @@
 #   Use container/service name instead of ID. Do not add numerical
 #   suffix showing number of replicas, e.g. when uat_api.1 use
 #   just 'uat_api'.
+#
+#   For redeploying of a stack use the name listed with `docker stack ls`.
 #
 #%B
 
@@ -36,13 +39,14 @@ function __main__() {
         exit 1
     }
     case $command in
-        ps)      swarm-ps ;;
-        restart) swarm-restart $(eval echo $PARAMS) ;;
-        exec)    swarm-exec    $(eval echo $PARAMS) ;;
-        logs)    swarm-logs    $(eval echo $PARAMS) ;;
-        tags)    swarm-tags ;;
-        help)    usage ; exit 0 ;;
-        *)       echo "Uknown parameters: '$command'!" ;;
+        ps)       swarm-ps ;;
+        restart)  swarm-restart  $(eval echo $PARAMS) ;;
+        exec)     swarm-exec     $(eval echo $PARAMS) ;;
+        logs)     swarm-logs     $(eval echo $PARAMS) ;;
+        redeploy) swarm-redeploy $(eval echo $PARAMS) ;;
+        tags)     swarm-tags ;;
+        -h|*help) usage ; exit 0 ;;
+        *)        echo "Uknown parameters: '$command'!" ;;
     esac
 }
 
