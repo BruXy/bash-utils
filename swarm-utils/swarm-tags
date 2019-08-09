@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+# Display deployment specific tags for all workers.
+#
+# * Add tag:
+#   docker node update --label-add <TAG>=true <WORKER>
+# * Remove tag:
+#   docker node update --label-rm <TAG>
+#
+
 for node in $(docker node ls --filter role=worker --format '{{ .Hostname }}');
 do
     tags=$(docker node inspect "$node" -f '{{.Spec.Labels}}' |\

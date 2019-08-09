@@ -6,12 +6,15 @@
 #
 # Commands:
 #
-#   exec     Run a command in a running container
-#   logs     Fetch the logs of a container
-#   ps       Show running containers
-#   restart  Restart container, may redeploy it on a different node
-#   redeploy Restart and redeploy all containers from a selected stack.
-#   tags     Show tags assosiated for all worker nodes
+#   exec       Run a command in a running container
+#   logs       Fetch the logs of a container
+#   ps         Show running containers
+#   restart    Restart container, may redeploy it on a different node
+#   redeploy   Restart and redeploy all containers from a selected stack
+#   deploy     Deploy stack (will check if docker-compose.yml exists)
+#   stop       Stop container
+#   stopstack  Stop all containers in the stack
+#   tags       Show tags assosiated for all worker nodes
 #
 # Container:
 #
@@ -39,14 +42,17 @@ function __main__() {
         exit 1
     }
     case $command in
-        ps)       swarm-ps ;;
-        restart)  swarm-restart  $(eval echo $PARAMS) ;;
-        exec)     swarm-exec     $(eval echo $PARAMS) ;;
-        logs)     swarm-logs     $(eval echo $PARAMS) ;;
-        redeploy) swarm-redeploy $(eval echo $PARAMS) ;;
-        tags)     swarm-tags ;;
-        -h|*help) usage ; exit 0 ;;
-        *)        echo "Uknown parameters: '$command'!" ;;
+        ps)        swarm-ps       $(eval echo $PARAMS) ;;
+        restart)   swarm-restart  $(eval echo $PARAMS) ;;
+        exec)      swarm-exec     $(eval echo $PARAMS) ;;
+        logs)      swarm-logs     $(eval echo $PARAMS) ;;
+        redeploy)  swarm-redeploy $(eval echo $PARAMS) ;;
+        deploy)    swarm-deploy   $(eval echo $PARAMS) ;;
+        tags)      swarm-tags ;;
+        stop)      swarm-stop     $(eval echo $PARAMS) ;;
+        stopstack) swarm-stopstack $(eval echo $PARAMS) ;;
+        -h|*help)  usage ; exit 0 ;;
+        *)         echo "Uknown parameters: '$command'!" ;;
     esac
 }
 

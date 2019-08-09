@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# Stop all containers in given stack
+#
+STACK=$1
+
+container_list=$(docker stack ps --format 'table {{ .Name }}\t{{ .DesiredState }}' $STACK |\
+    sed -ne '/Running/{s/^\([^\.]*\).[0-9].*/\1=0/;p}' | sort -u)
+
+docker service scale $container_list
+

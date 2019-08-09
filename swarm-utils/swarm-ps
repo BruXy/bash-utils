@@ -3,6 +3,9 @@
 # Display list of running containers in similar output as 'docker ps'.
 #
 
+# Optional parameter to grep particular services
+SRV_REGEX=${1:-.}
+
 # Get a list of running containers
 SERVICE_LIST=$(docker service ls --format "{{.Name}} {{.Replicas}}" | \
     grep -vE "0/[0-9]+" | \
@@ -14,7 +17,8 @@ printf "ID;IMAGE;STATUS;NAME;NODE\n"
 for srv in $SERVICE_LIST
 do
     docker service ps $srv -f desired-state=running \
-        --format="{{.ID}};{{.Image}};{{.CurrentState}};{{.Name}};{{.Node}}"
+        --format="{{.ID}};{{.Image}};{{.CurrentState}};{{.Name}};{{.Node}}" | \
+        grep $SRV_REGEX
 done
 ) | column -s';' -t
 

@@ -1,0 +1,10 @@
+#!/bin/bash
+STACK=$1
+CONFIG=/mnt/encrypted_efs/tenants/$STACK/docker-shared/docker-compose.yml 
+
+if [ ! -f $CONFIG ] ; then
+    printf "$0: Missing configuration for stack deployment!\n" >&2
+    exit 1
+fi
+
+docker stack deploy -c $CONFIG $STACK

@@ -1,0 +1,9 @@
+#!/bin/bash
+#
+# Stop container running in swarm.
+#
+PARAM=$1
+CONTAINER=${PARAM/%.[0-9]/}
+
+docker service scale ${CONTAINER}=0
+
