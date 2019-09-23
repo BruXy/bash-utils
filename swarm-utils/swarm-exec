@@ -4,6 +4,8 @@ SERVICE=$1
 shift
 COMMAND="$*" # store all other parameters as possible commands
 VERBOSE=1
+# Propagate proper TTY size via these envvars:
+SIZE="-e COLUMNS=$(tput cols) -e LINES=$(tput lines)"
 
 #############
 # Functions #
@@ -57,7 +59,7 @@ function worker_exec() {
             '{{ .Status.ContainerStatus.ContainerID }}' \
              $(docker service ps ${service_name} -q -f desired-state=running))
     printf "${ARGV_0}: ID of '%s' is %s.\n" $service_name $container_id
-    docker --host tcp://${node_ip}:2375/ exec -it ${container_id} $command
+    docker --host tcp://${node_ip}:2375/ exec $SIZE -it ${container_id} $command
 }
 
 ########
@@ -68,6 +70,7 @@ function worker_exec() {
 [ -z "$COMMAND" ] && { printf "No command given!" 1>&2; exit 1; }
 
 vprint "User parameters: SERVICE='$SERVICE', COMMAND='$COMMAND'\n"
+vprint "Detected terminal size: $(sed -e 's/-e//g' <<< $SIZE)\n"
 
 STACK=$(get_stack $SERVICE)
 [ $? -ne 0 ] && exit 1
