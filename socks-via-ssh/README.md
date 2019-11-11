@@ -58,13 +58,35 @@ Network/Connection/Settings*, other browsers like Chrome will use system
 wide settings. Find that settings in your system, but it looks always
 very similar:
 
-socks\_proxy.png
+![Chrome proxy settings](socks\_proxy.png)
 
 Enable your SOCKS proxy manually to `localhost:8080`. You can always
 check [ifconfig.co](http://ifconfig.co/) before and after to see what is
 your current IP address. After this all your HTTP requests will be
 forwarded via SOCKS proxy and your IP address will be an address of the
 server.
+
+Trick for SOCKS proxy binded to localhost:1080
+----------------------------------------------
+
+1. Scan host via proxy:
+
+       nmap -sV -Pn -n --proxies socks4://127.0.0.1:1080 scanme.nmap.org
+
+2. HTTP request via proxy:
+
+       curl --user-agent "Mozilla" --socks4 localhost:1080 http://ifconfig.co
+
+3. SSH via proxy:
+
+       ssh -o ProxyCommand='nc --proxy-type socks4 --proxy 127.0.0.1:1080 %h %p' user@target
+
+4. Some programs can use SOCKS via system proxy settings:
+
+       export http_proxy=socks5://127.0.0.1:1080
+       export https_proxy=socks5://127.0.0.1:1080
+
+       youtube-dl "youtube.com/watch?V=..."
 
 Many tunnels and simple proxy switching
 ---------------------------------------
@@ -98,6 +120,22 @@ host.
         IdentityFile ~/.ssh/id_rsa_at_work
         IdentitiesOnly yes
         DynamicForward 8080
+
+    # Example of bastion configuration
+    Host mybastion
+        User alice
+        Hostname mybastion.com
+        IdentityFile ~/.ssh/id_rsa2
+        IdentitiesOnly yes
+
+    # This host call 'private' will open tunnel via bastion
+    # configured above, all proxy calls will be forwarded
+    # via tunnel on localhost:8081 via those two hosts.
+    Host private
+        Hostname 172.32.0.1
+        Port 2222
+        ProxyCommand ssh mybastion -W %h:%p
+        DynamicForward 8081
 
 The example above has also more options for using different Port, User
 and non-default RSA key. With this settings when I need to ssh to this
