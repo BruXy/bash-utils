@@ -1,8 +1,10 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.0 (Fri Jan  4 23:48:41 AST 2019)
+# Version: 1.1 (Sun Nov 10 23:37:54 AST 2019)
+#
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
+# GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
 #
 #%A
 # SOCKS SSH Tunnels
@@ -17,6 +19,29 @@
 #   2. Specify option DynamicForward <PORT>, to open SOCKS tunnel
 #   3. Create ~/.sstunrc and list all hosts you will use as proxy.
 #   4. Run this script ./sstun start.
+#
+# Trick for SOCKS proxy binded to localhost:1080
+# ----------------------------------------------
+#
+# 1. Scan host via proxy:
+#
+#    nmap -sV -Pn -n --proxies socks4://127.0.0.1:1080 scanme.nmap.org
+#
+# 2. HTTP request via proxy:
+#
+#    curl --user-agent "Mozilla" --socks4 localhost:1080 http://ifconfig.co
+#
+# 3. SSH via proxy:
+#
+#    ssh -o ProxyCommand='nc --proxy-type socks4 --proxy 127.0.0.1:1080 %h %p' user@target
+#
+# 4. Some programs can use SOCKS via system proxy settings:
+#
+#    export http_proxy=socks5://127.0.0.1:1080
+#    export https_proxy=socks5://127.0.0.1:1080
+#
+#    youtube-dl "youtube.com/watch?V=..."
+#
 #%B
 
 ####################
@@ -28,6 +53,7 @@ LOCK="$HOME/.sstun.run"
 TUN_BIND="localhost"
 HOST_LIST="$HOME/.sstunrc"
 SSH_HOSTS=()
+declare -A PID_LIST # hashmap [host]=PID
 
 #############
 # Functions #
@@ -40,6 +66,24 @@ SSH_HOSTS=()
 
 function print_help() {
     sed -ne '/^#%A/,/^#%B/{s/\(^#\|^#%[AB]\)//p}' $0
+}
+
+
+#=== FUNCTION ============================================================
+#        Name: get_child_pid
+# Description: Return PID of child process, only 1 child process expected.
+# Parameter 1: Parent process ID (PPID)
+#     Returns: Integer, child's PID.
+#=========================================================================
+
+function get_child_pid() {
+    local pid=$1
+    local retval=$(ps --ppid $pid -h -o pid)
+    if [ -z "$retval" ] ; then
+        printf "$0 WARNING -- Cannot find child process of %d!\n" $pid
+    else
+        echo $retval
+    fi
 }
 
 
@@ -65,6 +109,23 @@ function read_host_list() {
         exit 1
     fi
 }
+
+
+#=== FUNCTION ============================================================
+#        Name: read_lock_file
+# Description: Read lock file with host=PID records and convert it into
+#              hash array stored in $PID_LIST global variable.
+#=========================================================================
+
+function read_lock_file() {
+    declare -A host_list
+    for line in $(cat $LOCK)
+    do
+        read host pid<<<$(sed 's/=/ /'<<<$line)
+        PID_LIST[$host]=$pid
+    done
+}
+
 
 #=== FUNCTION ============================================================
 #        Name: check_lockfile
@@ -118,12 +179,16 @@ function create_tunnels() {
         rm -f $AUTOSSH_PIDFILE
         echo "$0: started tunnel on host $host with PID = $pid"
 
-        # Store autossh and ssh PIDs:
-        echo "AutoSSH: $pid" >> $LOCK
-        # - get child process PID when Parent PID is given
-        echo "SSH: $(ps --ppid $pid -o pid=)" >> $LOCK
+        # Store autossh PIDs:
+        echo "$host=$pid" >> $LOCK
+
+        # Note: Only autossh PID is important, it is starting child
+        #       process with actuall ssh connection and this process
+        #       my time out and autossh will automatically start a
+        #       new ssh process to reconnect.
     done
 }
+
 
 #=== FUNCTION ============================================================
 #        Name: stop_tunnels
@@ -132,12 +197,17 @@ function create_tunnels() {
 #=========================================================================
 
 function stop_tunnels() {
-    for pid in $(sed -ne '/^AutoSSH:/s///p' $LOCK)
+    read_lock_file
+    for host in ${!PID_LIST[*]}
     do
-        printf "Sending SIGINT to $pid\n"
+        pid=${PID_LIST[$host]}
+        printf "$0 INFO -- Closing connection to '%s'\n" $host
+        printf "$0 INFO -- Sending SIGINT to PID %d\n" $pid
         kill -s SIGINT $pid
         retval=$?
-        printf "kill retval = $retval\n"
+        if [ $retval != 0 ] ; then
+            printf "$0 WARNING -- kill retval = $retval\n"
+        fi
     done
     rm -f $LOCK
 }
@@ -151,13 +221,19 @@ function stop_tunnels() {
 #=========================================================================
 
 function ip_status() {
+    read_lock_file
     if [ -f $LOCK ] ; then
-        for pid in $(sed -ne '/^SSH:/s///p' $LOCK)
+        for host in ${!PID_LIST[*]}
         do
-            port=$(lsof -P -p $pid | sed -ne 's/.* localhost:\([0-9]*\) .*/\1/p' | uniq)
+            ppid=${PID_LIST[$host]}
+            child_pid=$(get_child_pid $ppid)
+            printf "$0: INFO -- %s autossh (ppid: %d) -> ssh (pid: %d)\n" \
+                "$host" "$ppid" "$child_pid"
+            port=$(lsof -P -p $child_pid | \
+                    sed -ne 's/.* localhost:\([0-9]*\) .*/\1/p' | uniq)
             remote_ip=$(curl --silent --socks5 $TUN_BIND:$port http://ifconfig.co/)
             if [ ! -z "$remote_ip" ] ; then
-                echo "$0: SOCKS proxy $TUN_BIND:$port returns: $remote_ip, "\
+                echo "$0: SOCKS proxy $TUN_BIND:$port connects via: $remote_ip, "\
                     $(dig +short -x $remote_ip | sed -e "s/\.%//")
             else
                 printf "$0: No proxy enabled on port '%d', (pid=%d)!\n" "$port" "$pid"
@@ -167,6 +243,7 @@ function ip_status() {
         printf "$0: ERROR -- No lock file found, was sstun started?\n" >&2
     fi
 }
+
 
 ########
 # Main #
@@ -181,6 +258,7 @@ case $1 in
         if check_lockfile ; then
             read_host_list
             create_tunnels
+            sleep 2 # wait for connections to establish
             ip_status
             exit 0
         else
@@ -189,6 +267,7 @@ case $1 in
         fi
         ;;
     stop)
+        read_lock_file
         stop_tunnels
         ;;
     restart)
@@ -196,12 +275,11 @@ case $1 in
         $0 start
         ;;
     status)
-        read_host_list
         check_lockfile
         ip_status
         ;;
     list|socks|info)
-        ip_status | sort -n
+        ip_status | grep SOCKS | sort -n
         ;;
     help)
         print_help
