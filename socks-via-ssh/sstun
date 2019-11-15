@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.2 (Thu Nov 14 13:53:02 AST 2019)
+# Version: 1.3 (Fri Nov 15 11:56:52 AST 2019)
 #
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
 # GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
@@ -11,9 +11,19 @@
 # =================
 #
 # Usage:
+# ------
+#
 #   sstun start|stop|restart|status|help|list
 #
+#         help    ... Show this help
+#         start   ... Enable all tunnels listed in ~/.sstunrc.
+#         stop    ... Disconnect all tunnels.
+#         restart ... Cycle stop->start.
+#         status  ... Get PIDs of ssh processes and proxy info.
+#         list    ... List enabled proxies.
+#
 # Configuration:
+# --------------
 #
 #   1. Create your SSH server entries in ~/.ssh/config.
 #   2. Specify option DynamicForward <PORT>, to open SOCKS tunnel
@@ -221,6 +231,21 @@ function stop_tunnels() {
 
 
 #=== FUNCTION ============================================================
+#        Name: get_hostname
+# Description: Query DNS and return hostname for given IP.
+# Parameter 1: IP Address.
+#     Returns: List of hostnames separated by comma.
+#=========================================================================
+
+function get_hostname() {
+    local ip=$1
+    dig +short -x $ip | \
+        sed -e "s/\.%//" -e "s/\.$/, /" -e '$s/,\s*$//' | \
+        tr -d '\n'
+}
+
+
+#=== FUNCTION ============================================================
 #        Name: ip_status
 # Description: Check remote ip over SOCKS proxy. It will check all enabled
 #              SSH processes, detects open ports and get public IP by
@@ -246,8 +271,9 @@ function ip_status() {
                 remote_ip=$(curl --silent --socks5 $TUN_BIND:$p \
                     http://ifconfig.co/)
                 if [ ! -z "$remote_ip" ] ; then
-                    echo "$0: SOCKS proxy $host ($TUN_BIND:$p) connects via: $remote_ip, "\
-                        $(dig +short -x $remote_ip | sed -e "s/\.%//")
+                    printf "$0: SOCKS proxy %s (%s) connects via: %s, %s\n"\
+                        "$host" "$TUN_BIND:$p" "$remote_ip" \
+                        "$(get_hostname $remote_ip)"
                 else
                     printf "$0: $host has no proxy enabled on port '%d', (pid=%d)!\n" "$p" "$pid"
                 fi
@@ -258,6 +284,19 @@ function ip_status() {
     fi
 }
 
+
+#=== FUNCTION ============================================================
+#        Name: format_table
+# Description: Format output of 'status' command as table.
+#=========================================================================
+
+function format_table() {
+    sed -r -e '1i Id; Port; IP Address; Hostname' \
+       -e 's/^.*proxy ([^ ]*)/\1;/' \
+       -e 's/\(([^)]+)\)/\1;/' \
+       -e 's/connects via: ([0-9.]+),/\1;/' | column -s';' -t | \
+       sed '1{p;s/./-/g}'
+}
 
 ########
 # Main #
@@ -293,7 +332,7 @@ case $1 in
         ip_status
         ;;
     list|socks|info)
-        ip_status | grep SOCKS | sort -n
+        ip_status | grep SOCKS | sort -n | format_table
         ;;
     help)
         print_help
