@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.3 (Fri Nov 15 11:56:52 AST 2019)
+# Version: 1.3.1 (Fri Nov 15 21:58:27 AST 2019)
 #
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
 # GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
@@ -81,9 +81,9 @@ function print_help() {
 
 #=== FUNCTION ============================================================
 #        Name: get_child_pid
-# Description: Return PID of child process, only 1 child process expected.
+# Description: Print PID of child process, only 1 child process expected.
 # Parameter 1: Parent process ID (PPID)
-#     Returns: Integer, child's PID.
+#     Returns: 0 OK, 1 on error.
 #=========================================================================
 
 function get_child_pid() {
@@ -91,15 +91,16 @@ function get_child_pid() {
     # check if $pid of parent exists
     if ! kill -0 "$pid" >& /dev/null ; then
         printf "$0 ERROR -- Process PID %d does not exists!\n" "$pid"
-        return
+        return 1
     fi 
     # get child PID
     local retval=$(ps --ppid $pid -h -o pid)
     if [ -z "$retval" ] ; then
         printf "$0 WARNING -- Cannot find child process of %d!\n" $pid
-    return
+        return 1
     else
         echo $retval
+        return 0
     fi
 }
 
@@ -259,6 +260,11 @@ function ip_status() {
         do
             ppid=${PID_LIST[$host]}
             child_pid=$(get_child_pid $ppid)
+            # Test if parent and child process exist.
+            if [ $? -ne 0 ] ; then
+                printf "$0: ERROR -- %s ssh process does not exist!\n" $host >&2
+                continue
+            fi
             printf "$0: INFO -- %s autossh (ppid: %d) -> ssh (pid: %d)\n" \
                 "$host" "$ppid" "$child_pid"
             # Note 1: lsof on Ubuntu complains about tracefs to stderr,
