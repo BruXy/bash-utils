@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.3.1 (Fri Nov 15 21:58:27 AST 2019)
+# Version: 1.3.2 (Thu Nov 28 13:43:42 AST 2019)
 #
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
 # GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
@@ -277,9 +277,10 @@ function ip_status() {
                 remote_ip=$(curl --silent --socks5 $TUN_BIND:$p \
                     http://ifconfig.co/)
                 if [ ! -z "$remote_ip" ] ; then
-                    printf "$0: SOCKS proxy %s (%s) connects via: %s, %s\n"\
+                    printf "$0: SOCKS proxy %s (%s) connects via: %s, %s; %s\n"\
                         "$host" "$TUN_BIND:$p" "$remote_ip" \
-                        "$(get_hostname $remote_ip)"
+                        "$(get_hostname $remote_ip)" \
+                        "$(geo_location $TUN_BIND:$p)"
                 else
                     printf "$0: $host has no proxy enabled on port '%d', (pid=%d)!\n" "$p" "$pid"
                 fi
@@ -297,11 +298,27 @@ function ip_status() {
 #=========================================================================
 
 function format_table() {
-    sed -r -e '1i Id; Port; IP Address; Hostname' \
+    sed -r -e '1i Id; Port; IP Address; Hostname; Location' \
        -e 's/^.*proxy ([^ ]*)/\1;/' \
        -e 's/\(([^)]+)\)/\1;/' \
        -e 's/connects via: ([0-9.]+),/\1;/' | column -s';' -t | \
        sed '1{p;s/./-/g}'
+}
+
+
+#=== FUNCTION ============================================================
+#        Name: geo_location
+# Description: Query ifconfig.co to get geo location.
+# Parameter 1: Proxy bind, e.g $TUN_BIND:port
+#     Returns: Country,City to stdout
+#=========================================================================
+
+function geo_location() {
+    local socks_proxy=$1
+    curl --socks5 $socks_proxy -s http://ifconfig.co/json | \
+        tr ',' '\n' | \
+        sed -ne '/"country"\|"city"/{s/.*:"\(.*\)"$/\1/;p}' | \
+        sed "N;s/\n/, /"
 }
 
 ########
