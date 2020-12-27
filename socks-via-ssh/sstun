@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.3.2 (Thu Nov 28 13:43:42 AST 2019)
+# Version: 1.4 (Sat Dec 26 22:55:28 AST 2020)
 #
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
 # GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
@@ -92,7 +92,7 @@ function get_child_pid() {
     if ! kill -0 "$pid" >& /dev/null ; then
         printf "$0 ERROR -- Process PID %d does not exists!\n" "$pid"
         return 1
-    fi 
+    fi
     # get child PID
     local retval=$(ps --ppid $pid -h -o pid)
     if [ -z "$retval" ] ; then
@@ -315,10 +315,18 @@ function format_table() {
 
 function geo_location() {
     local socks_proxy=$1
-    curl --socks5 $socks_proxy -s http://ifconfig.co/json | \
-        tr ',' '\n' | \
-        sed -ne '/"country"\|"city"/{s/.*:"\(.*\)"$/\1/;p}' | \
-        sed "N;s/\n/, /"
+
+    # Parse output with jq
+    if jq --help &> /dev/null ; then
+        curl --socks5 $socks_proxy -s http://ifconfig.co/json | \
+            jq -r '[.country,.city] | join(", ")'
+    else
+    # Without jq
+        curl --socks5 $socks_proxy -s http://ifconfig.co/json | \
+            tr ',' '\n' | \
+            sed -ne '/"country"\|"city"/{s/.*:"\(.*\)"$/\1/;p}' | \
+            sed "N;s/\n/, /"
+    fi
 }
 
 ########
