@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.4 (Sat Dec 26 22:55:28 AST 2020)
+# Version: 1.5 (Sun 30 May 2021 12:26:11 AM ADT)
 #
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
 # GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
@@ -21,6 +21,7 @@
 #         restart ... Cycle stop->start.
 #         status  ... Get PIDs of ssh processes and proxy info.
 #         list    ... List enabled proxies.
+#         alias   ... Create aliases for nmap, ssh, curl.
 #
 # Configuration:
 # --------------
@@ -51,6 +52,16 @@
 #    export https_proxy=socks5://127.0.0.1:1080
 #
 #    youtube-dl "youtube.com/watch?V=..."
+#
+# Aliases:
+# --------
+#
+# Use: eval $(sstun alias)
+#
+# It will import aliases for curl, nmap and ssh to your current shell.
+# Format of alias is for example: curl_<proxy_id>.
+#
+# Disable aliases: unalias $(sstun alias | sed 's/alias \([^=]*\)=.*/\1/')
 #
 #%B
 
@@ -329,6 +340,26 @@ function geo_location() {
     fi
 }
 
+
+#=== FUNCTION ============================================================
+#        Name: create_aliases
+# Description: Create aliases for curl and nmap to use SOCKS proxy
+#     Returns: N/A
+#=========================================================================
+
+function create_aliases() {
+    ip_status | sed -rne '/SOCKS/{s/.* ([^ ]*) \(([^)]*)\).*/\1 \2/;p}' |
+        while read proxy_id port
+        do
+            # Nmap does not like 'localhost', rather use 127.0.0.1:
+            printf "alias nmap_%s='nmap --proxies socks4://127.1:%s ';\n" \
+                $proxy_id ${port/localhost:/}
+            printf "alias curl_%s='curl --socks4 %s ';\n" $proxy_id $port
+            printf "alias ssh_%s='ssh -o ProxyCommand=\"nc --proxy-type socks4 --proxy %s %%h %%p\"';\n" $proxy_id $port
+        done
+}
+
+
 ########
 # Main #
 ########
@@ -364,6 +395,9 @@ case $1 in
         ;;
     list|socks|info)
         ip_status | grep SOCKS | sort -n | format_table
+        ;;
+    alias)
+        create_aliases
         ;;
     help)
         print_help
