@@ -88,6 +88,13 @@ Trick for SOCKS proxy binded to localhost:1080
 
        youtube-dl "youtube.com/watch?V=..."
 
+5. If you need to use proxy for program which does not support SOCKS, install `hpts`:
+
+        npm install -g http-proxy-to-socks
+        hpts --socks 127.0.0.1:9000 -p 8080
+
+   This will use SOCKS proxy on localhost port 9000 to create HTTP proxy on 8080.
+
 Many tunnels and simple proxy switching
 ---------------------------------------
 
