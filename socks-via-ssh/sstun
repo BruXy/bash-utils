@@ -74,6 +74,8 @@ LOCK="$HOME/.sstun.run"
 TUN_BIND="localhost"
 HOST_LIST="$HOME/.sstunrc"
 SSH_HOSTS=()
+AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14"
+AGENT+=" (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A"
 declare -A PID_LIST # hashmap [host]=PID
 
 #############
@@ -153,6 +155,7 @@ function read_lock_file() {
         read host pid<<<$(sed 's/=/ /'<<<$line)
         PID_LIST[$host]=$pid
     done
+    printf "$0: INFO -- %s\n" "$(set | grep ^PID_LIST)"
 }
 
 
@@ -283,10 +286,12 @@ function ip_status() {
             # Note 2: I have some connections with more then one tunnel.
             ports=$(lsof -P -p $child_pid |& \
                     sed -ne 's/.* localhost:\([0-9]*\) .*/\1/p' | uniq)
+            printf "$0: INFO --   TCP port: %s\n" $ports
             for p in $ports
             do
                 remote_ip=$(curl --silent --socks5 $TUN_BIND:$p \
-                    http://ifconfig.co/)
+                    --user-agent "$AGENT" http://ifconfig.co/json | \
+                    jq -r '.ip' )
                 if [ ! -z "$remote_ip" ] ; then
                     printf "$0: SOCKS proxy %s (%s) connects via: %s, %s; %s\n"\
                         "$host" "$TUN_BIND:$p" "$remote_ip" \
@@ -329,11 +334,13 @@ function geo_location() {
 
     # Parse output with jq
     if jq --help &> /dev/null ; then
-        curl --socks5 $socks_proxy -s http://ifconfig.co/json | \
+        curl --socks5 $socks_proxy --user-agent "$AGENT" \
+            -s http://ifconfig.co/json | \
             jq -r '[.country,.city] | join(", ")'
     else
     # Without jq
-        curl --socks5 $socks_proxy -s http://ifconfig.co/json | \
+        curl --socks5 $socks_proxy --user-agent "$AGENT" \
+            -s http://ifconfig.co/json | \
             tr ',' '\n' | \
             sed -ne '/"country"\|"city"/{s/.*:"\(.*\)"$/\1/;p}' | \
             sed "N;s/\n/, /"
