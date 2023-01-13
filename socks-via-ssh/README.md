@@ -19,6 +19,8 @@ SSH also support *dynamic port forwarding via SOCKS proxy*. Benefits:
     is the best for you.
 4.  No need for VPN (if you need it mainly for HTTP).
 5.  No need for HTTP(S) proxy.
+6.  Your employer installed protection software and blocking some
+    sites, but not SSH.
 
 Only thing you need is an SSH access to the server in better IP range :)
 SOCKS proxy is also supported by not only web browsers, but also some
