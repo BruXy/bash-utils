@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Author: Martin 'BruXy' Bruchanov, bruchy at gmail
-# Version: 1.5 (Sun 30 May 2021 12:26:11 AM ADT)
+# Version: 1.6 (Sat 22 Jul 2023 10:25:48 PM ADT)
 #
 # URL: http://bruxy.regnet.cz/web/linux/EN/socks-via-ssh/
 # GitHub: https://github.com/BruXy/bash-utils/tree/master/socks-via-ssh
@@ -367,6 +367,26 @@ function create_aliases() {
 }
 
 
+#=== FUNCTION ============================================================
+#        Name: wait_spinner
+# Description: Display message and spin while waiting to finish something.
+#              Run in background (&), get its PID ($!), run task and kill
+#              the PID once the task is finished.
+# Parameter 1: Printed message
+#     Returns: N/A
+#=========================================================================
+
+function wait_spinner() {
+    local msg="$*"
+    local sp="◴◷◶◵"
+    while true
+    do
+        printf "\b${msg} ${sp:i++%${#sp}:1}\r"
+        sleep 0.25
+    done
+}
+
+
 ########
 # Main #
 ########
@@ -384,8 +404,10 @@ case $1 in
             ip_status
             exit 0
         else
-            printf "No tunnel(s) enabled!\n"
-            exit 1
+            printf "No tunnel(s) enabled, restarting!\n"
+            rm -v -f $LOCK
+            $0 start
+            exit 0
         fi
         ;;
     stop)
@@ -401,7 +423,10 @@ case $1 in
         ip_status
         ;;
     list|socks|info)
+        wait_spinner "Checking connection..." &
+        pid=$!
         ip_status | grep SOCKS | sort -n | format_table
+        kill $pid
         ;;
     alias)
         create_aliases
