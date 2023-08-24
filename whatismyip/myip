@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# Get IP and location for each network inferface
+# ----------------------------------------------
+#
+
+SITE=https://ifconfig.co/json
+
+# Ignore these net interfaces:
+IGNORE_DEVS=(lo[0-9]* virbr[0-9]* tun[0-9]* br-[[:xdigit:]*] docker[0-9]*)
+
+NET_DEVS=$(cat /proc/net/dev | \
+    sed -ne '/:/{s/\([^:]*\).*/\1/p}' | \
+    grep -vE $(tr ' ' '|' <<< "${IGNORE_DEVS[*]}")
+    )
+
+( printf "|Interface|IP Address|Location|\n"
+for iface in $NET_DEVS
+do
+    info=$(curl --silent --connect-timeout 1 --max-time 1 \
+            --interface $iface $SITE |\
+             jq -r '"\(.ip)|\(.region_name), \(.city), \(.country)"')
+    printf "|%s|%s|\n" "$iface" "$info"
+done ) | column -t -s'|'
+
