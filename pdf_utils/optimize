@@ -1,0 +1,26 @@
+#!/bin/bash
+INPUT=${1:?"Missing input file!"}
+OUTPUT=/tmp/output-$$.pdf
+
+# https://web.mit.edu/ghostscript/www/Ps2pdf.htm#Options
+PDF_SETTINGS=${PDF_SETTING:="/default"}
+
+gs -sDEVICE=pdfwrite \
+    -dCompatibilityLevel=1.4 \
+    -dPDFSETTINGS=$PDF_SETTINGS \
+    -dNOPAUSE -dQUIET -dBATCH \
+    -sOutputFile=$OUTPUT $INPUT
+
+size_out=$(stat --format=%s $OUTPUT)
+size_in=$(stat --format=%s $INPUT)
+
+if [ $size_out -lt $size_in ] ; then
+    printf "Saving backup of input file: %s" $INPUT.bak
+    # TODO, check retvals that writes when well...
+    mv $INPUT $INPUT.bak
+    mv $OUTPUT $INPUT
+    printf "Resize sucessful, new file is reduced to %d%% of original.\n" $[(size_out*100)/size_in]
+else
+    printf "Unable to optimize size (orig=%d, new=%d)...\n" $size_in $size_out
+    rm $OUTPUT
+fi
