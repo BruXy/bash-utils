@@ -75,9 +75,12 @@ Trick for SOCKS proxy binded to localhost:1080
 
        nmap -sV -Pn -n --proxies socks4://127.0.0.1:1080 scanme.nmap.org
 
-2. HTTP request via proxy:
+2. HTTP request via proxy, optionally add the parameter `--socks5-hostname` if
+   you need use the proxy also for the name resolution:
 
-       curl --user-agent "Mozilla" --socks4 localhost:1080 http://ifconfig.co
+       curl --user-agent "Mozilla" --socks5 localhost:1080 \
+            --socks5-hostname localhost:1080 \
+            http://ifconfig.co
 
 3. SSH via proxy:
 

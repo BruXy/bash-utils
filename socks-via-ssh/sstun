@@ -361,7 +361,7 @@ function create_aliases() {
             # Nmap does not like 'localhost', rather use 127.0.0.1:
             printf "alias nmap_%s='nmap --proxies socks4://127.1:%s ';\n" \
                 $proxy_id ${port/localhost:/}
-            printf "alias curl_%s='curl --socks4 %s ';\n" $proxy_id $port
+            printf "alias curl_%s='curl --socks5-hostname %s --socks5 %s ';\n" $proxy_id $port $port
             printf "alias ssh_%s='ssh -o ProxyCommand=\"nc --proxy-type socks4 --proxy %s %%h %%p\"';\n" $proxy_id $port
         done
 }
