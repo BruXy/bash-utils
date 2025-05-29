@@ -1,0 +1,16 @@
+alias tflog='printf "Current TF_LOG=\"%s\"\n" $TF_LOG
+
+    debug_level=(
+        TRACE
+        DEBUG
+        INFO
+        WARN
+        ERROR
+        JSON
+    )
+    COLUMNS=20
+    select level in ${debug_level[*]}
+    do
+        export TF_LOG=$level
+        break
+    done' 
