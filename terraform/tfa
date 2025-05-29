@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# Terraform apply from files
+# ==========================
+#
+# Usage:
+# ./tfa [dry] FILE_LIST
+#
+# Parameter 'dry' will just display the command and you can
+# for example modify it prior the execution
+#
+
+if [[ "$1" == "dry" ]] ; then
+    DRY_RUN=1
+    shift # remove dry from parameter list
+else
+    DRY_RUN=0
+fi
+
+INPUT=$@
+
+# Check files for resource and module blocks
+RESOURCES=(
+$(for file in $INPUT
+do
+    # Check for resources
+    sed -n -e '/resource/{s/^\s*resource\s\+"\([^"]*\)"\s\+"\([^"]*\)".*/\1.\2/p}' $file
+
+    # Check for modules
+    sed -n -e '/module/{s/^\s*module\s\+"\([^"]*\)".*/module.\1/p}' $file
+done)
+)
+
+# Execute or display the apply command
+CMD="terraform apply $(printf ' -target=%s ' $(echo ${RESOURCES[*]}))"
+
+if [ $DRY_RUN -eq 1 ] ; then
+    sed -e 's/ -target/\n    &/g' <<< "$CMD" | sed -e '$!s/$/ \\/'
+else
+    printf "Executing: \n"
+    printf "%s\n" "$CMD"
+    eval $CMD
+fi
