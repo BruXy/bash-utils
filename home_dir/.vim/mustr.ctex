@@ -1,0 +1,217 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Autor: Martin Bruchanov                                                     % 
+% email: bruxy at regnet dot cz                                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Nastaveni jazyka -----------------------------------------------------------
+\mainlanguage[cz]
+\language[cz] 
+\enableregime[utf] % latin2
+ 
+\setupoutput[pdftex] % dvips, acrobat
+\pdfminorversion=4 % verze pdf
+
+%\definetypeface [palatino] [rm] [serif] [palatino] [default] [encoding=ec]
+%\definetypeface [palatino] [mm] [math] [palatino] [default] [encoding=ec]
+
+\setupbodyfont[12pt]  %
+\setuppapersize[A4, portrait][A4, portrait] % A3, A4, A5, A6; landscape
+% \setuparranging[2*2] % zmena stranek pro vyrobu knizky
+
+% Rozmery stranky ------------------------------------------------------------
+%\setuplayout
+%	[width=190mm,
+%	height=137mm,
+%	backspace=10mm,
+%	topspace=5mm,
+%	top=0mm,
+%	header=20mm,
+%	footer=20mm,
+%	bottom=5mm,
+%	margin=10mm,
+%	rightedgedistance=5mm,
+%	rightedge=50mm]
+
+% Debugovani vzhledu ----------------------------------------------------------
+%\showframe % ukaze nastaveni vzhledu stranky
+%\showgrid   
+
+\setupexternalfigure [location=default] % Reads pictures also from texmf tree
+
+% Moznosti pro vnorene uvozovky a definice uv
+
+\setupdelimitedtext
+  [quotation]
+  [1]
+  [left={\symbol[leftquotation]},
+   right={\symbol[rightquotation]}]
+
+\setupdelimitedtext
+  [quotation]
+  [2]
+  [left={\symbol[leftquote]},
+   right={\symbol[rightquote]}]
+
+\def\uv#1{\quotation{#1}}
+
+% Pouziti barev
+\setupcolors[state=start]
+\setupcolor[rgb]
+
+\setupinterlinespace[medium]
+
+\setupwhitespace[medium]
+
+\setuptabulate[header=repeat]
+
+\setupbodyfontenvironment[default][em=italic]
+
+\setuppagenumbering[%
+	alternative=singlesided,  % doublesided
+	location={footer, center}, % header, middle, inleft, inmargin
+%   location=,                % zrusi cislovani uplne
+%	style={\bf\switchtobodyfont[11pt]},               %
+%	conversion=numbers,        % characters Characters romannumerals 
+	left={\lhd~},                % znak pred
+ 	right={~\rhd},               % znak za
+%	command=\Page,
+]
+
+\let\floatcaptionsuffix=: % zobrazuje Tabulka X.:
+
+% Interaktivni dokument ------------------------------------------------------
+
+\setupinteraction[state=start,color=darkred] % klikaci dokument
+\setupurl[style=type,color=darkred]
+
+
+% Vzhled obsahu ---------------------------------------------------------------
+\setupcombinedlist[content][level=1,alternative=b] 
+% a -- stranka hned za, b -- stranka na konci radku, 
+% c -- jako b, ale teckovany radek, d -- jako jeden odstavec
+\setuplist[chapter][width=10mm,style=bold]
+%\setuplist[section][width=10mm]
+%\setuplist[subsection][width=15mm]
+% pagestyle=normal for changing the appearance of pagenumber
+	
+
+% Odstavce ------------------------------------------------------------------
+% mezery mezi odstavci
+\setupwhitespace[none] 
+
+% velikost odsazeni
+\setupindenting[small,next]  % none, small, medium, bix, next, first, [rozmer]
+\indenting[yes]
+
+% vicesloupcova sazba
+%\setupcolumns[n=, ]
+
+
+% Nastaveni paticky
+%\setupfootertexts[][][]
+
+% Odstraneni mezer mezi polozkamy seznamu
+\setupitemize[4,packed]
+
+\setuphead[section][
+	style={\ss\switchtobodyfont[15pt]},
+]
+
+\setuphead[subsection][
+	style={\ss\switchtobodyfont[13pt]},
+]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Definice vzhledu stranku
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Nastaveni hlavicky
+\setupheader[style=\tfx\sc]
+\setupheadertexts[][chapter]
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Definice vzhledu nadpisu
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\definecolor[colchap][r=.65,g=0,b=0]
+
+\startuseMPgraphic{HeaderDeco}
+	numeric w, h;
+	path frame;
+%	x := OverlayWidth ; y := OverlayHeight ;
+	x := \overlaywidth ; y := \overlayheight;
+	frame := (-x, 0)--(x, 0)--(x, y)--(-x, y)--cycle;
+%	frame := (-x, 0)--(x, 0)--urcorner Page--ulcorner Page--cycle;
+	filldraw frame withcolor transparent("normal", 0.2, .5white);
+\stopuseMPgraphic
+
+\defineoverlay[HeaderDeco][\uniqueMPgraphic{HeaderDeco}]
+
+\def\MyChapter#1#2{ %2 -- text, 1 -- cislo
+%{\vbox{{\bf\ss\switchtobodyfont[24pt] #2}}} \hfill {\bf\rm\switchtobodyfont[48pt]#1}
+	\framedtext[width=\overlaywidth,
+%        height=\paperheight,
+        background={HeaderDeco},
+        offset=10pt,
+        strut=no,
+        frame=off,
+        align=right]{%
+           \vbox{#2}\vbox{#1}
+        }
+}
+
+% vzhled cisla
+\def\Cislovani#1{{#1}.} % tecka za cislem kapitoly
+
+\setuphead[chapter][
+	numbercommand=\Cislovani,
+%	pagebreak=no,
+	color=colchap,
+	style={\bf\switchtobodyfont[24pt]},
+	after={\nowhitespace\blank[2cm]},
+	command=\MyChapter,
+	header=empty,
+%	footer=none,
+%	after={\nowhitespace\hairline\blank[1cm]},
+]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\starttext
+
+% Titulni stranka %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\startfrontmatter
+
+	\setuppagenumber[state=stop]
+
+	\blank[3cm, force]
+
+	\startalignment[middle]
+	\startlines
+	{\bf\switchtobodyfont[48pt]Stručné~dějiny}\blank[2mm]
+	{\switchtobodyfont[24pt]porušování}\blank[3mm]
+	{\bf\switchtobodyfont[42pt]autorských práv}\blank[2mm]
+	{\switchtobodyfont[24pt]na přelomu 21. století}
+	\stoplines
+	\stopalignment
+
+	\blank[1cm, force]
+
+	\centerline{\currentdate[day,{.~},month,year]}
+
+\stopfrontmatter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\startbodymatter
+\completecontent % Nadpis + obsah
+\placecontent % obsah
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\stopbodymatter
+
+\stoptext
+

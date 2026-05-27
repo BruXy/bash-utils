@@ -1,5 +1,3 @@
-execute pathogen#infect()
-
 "set all -- zobrazi vsechny nastavene volby
 "set volba? -- ukaze hodnotu prisluse volby
 if &term=="rxvt" || &term=="screen.rxvt"
