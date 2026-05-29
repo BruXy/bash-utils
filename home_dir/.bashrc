@@ -183,11 +183,11 @@ function get_token() {
 }
 
 REGIONS=(
-    us-east-1 
-    us-east-2 
-    eu-west-1 
-    eu-central-1 
-    ap-northeast-1 
+    us-east-1
+    us-east-2
+    eu-west-1
+    eu-central-1
+    ap-northeast-1
     ap-southeast-2
 )
 
@@ -372,16 +372,20 @@ parse_git_branch() {
 # AWS_DEFAULT_REGION, AWS_PROFILE
 
 get_aws_info() {
+    local color=""
+    if [[ -n "$AWS_COLOR" ]] ; then
+        local color="\033[38;2;${AWS_COLOR}m"
+    fi
     if [[ -n "$AWS_PROFILE" ]] ; then
         printf "\n\342\224\234\342\224\200"
-        printf "AWS:[%s]" "$AWS_PROFILE"
+        printf "AWS:[$color%s\033[0m]" "$AWS_PROFILE"
     else
         printf ""
         return
     fi
 
     if [[ -n "$AWS_DEFAULT_REGION" ]] ; then
-        printf "\342\224\200[%s]" "$AWS_DEFAULT_REGION"
+        printf "\342\224\200[$color%s\033[0m]" "$AWS_DEFAULT_REGION"
     fi
 }
 
