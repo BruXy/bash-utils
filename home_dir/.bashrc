@@ -43,7 +43,7 @@ alias git-link='~/.git/hooks/pre-push'
 alias git-pr-check='gh pr view --json url -q .url '
 alias gcm='git checkout master || git checkout main && git pull '
 alias gp='git-fetch && git pull'
-alias git-repo='( cdgr; grep url .git/config  | sed -e "s/^.*@/https:\/\//" -e "sXcom:Xcom/X" -e "s/.git$//" ) '
+alias git-repo='( cdgr; grep url .git/config  | sed -e "s/^\s*url = //" -e "s/^.*@/https:\/\//" -e "sXcom:Xcom/X" -e "s/.git$//" ) '
 alias vimdiff="vimdiff -c 'set diffopt+=iwhiteall' "
 
 
@@ -221,9 +221,18 @@ function tmux_update() {
 # Completions
 source /etc/profile.d/bash_completion.sh
 
+# Read additional sources
+SRC_DIR=~/.bash_sources/
+if [ -d $SRC_DIR ] ; then
+    for src in $SRC_DIR/*
+    do
+        source $src
+    done
+fi
+
 alias ll='eza --all --long --git --header --icons'
 alias lt='eza --all --tree --icons'
-alias tree='eza --all -T --icons'
+alias tree='eza --all -T --icons=always --color=always | less -F -r'
 
 # remove alias ls if it exists
 alias ls >& /dev/null && unalias ls
@@ -327,7 +336,7 @@ function grepfiles() {
 
     if [[ $(git rev-parse --is-inside-work-tree) == "true" ]] ; then
         [ $HELP -eq 1 ] && { git grep -h ; return; }
-        git grep $opt "$params"
+        git grep $opt $params
     else
         [ $HELP -eq 1 ] && { grep -h ; return; }
         find . -path "*/.terraform" -prune -false -o -type f -print0 |\
