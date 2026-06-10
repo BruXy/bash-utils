@@ -8,6 +8,7 @@ PACKAGES=(
   gh
   glab
   golang-bin
+  graphviz
   ipython3
   jq 
   nmap
@@ -17,6 +18,8 @@ PACKAGES=(
   tmux 
   tmux-powerline
   vim
+  vim-pathogen
+  awesome-vim-colorschemes
 )
 
 dnf -y update
@@ -44,6 +47,11 @@ make install
 
 mkdir -p ~/bin
 
+#
+# Session Manager Plugin for AWS CLI
+# https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin-linux.html
+dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+
 # GhosTTY
 #
 # dnf copr enable scottames/ghostty
@@ -53,9 +61,25 @@ mkdir -p ~/bin
 curl -L https://raw.githubusercontent.com/warrensbox/terraform-switcher/master/install.sh |\
      bash -s -- -b $LOCAL_BIN
 
+# Nice color scheme for ViM
+# https://github.com/tpope/vim-vividchalk/tree/master
+curl -o $HOME/.vim/colors/vividchalk.vim \
+    https://raw.githubusercontent.com/tpope/vim-vividchalk/refs/heads/master/colors/vividchalk.vim
 
 # Git settings
 git config --global core.editor "vim"
+git config --global push.autoSetupRemote true
+
+# Copilot CLI
+# https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli
+curl -fsSL https://gh.io/copilot-install | PREFIX=$HOME bash
+
+# Claude Code CLI
+# https://docs.claude.com/en/docs/claude-code/setup
+# The official installer drops the binary in ~/.local/bin; symlink it into
+# $LOCAL_BIN.
+curl -fsSL https://claude.ai/install.sh | bash
+ln -sf "$HOME/.local/bin/claude" "$LOCAL_BIN/claude"
 
 # Notes:
 #
