@@ -1,8 +1,9 @@
 GIT_PUBLIC=$HOME/GIT
 LOCAL_BIN=$HOME/bin
+mkdir -p $HOME/.bash_sources
 
 PACKAGES=(
-  awscli 
+  awscli
   dhcp-client
   eza
   gh
@@ -10,21 +11,23 @@ PACKAGES=(
   golang-bin
   graphviz
   ipython3
-  jq 
+  jq
   nmap
   nodejs24-bin
   python3-autopep8
   terraform
-  tmux 
+  tmux
   tmux-powerline
   vim
   vim-pathogen
   awesome-vim-colorschemes
+  # AWS session manager:
+  # https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
+  https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
 )
 
 dnf -y update
 dnf install -y ${PACKAGES[*]}
-
 
 # GoReleaser -- https://goreleaser.com/
 
@@ -90,6 +93,6 @@ ln -sf "$HOME/.local/bin/claude" "$LOCAL_BIN/claude"
 # Enter this command:
 #    bcdedit /set hypervisorlaunchtype off
 #    DISM /Online /Disable-Feature:Microsoft-Hyper-V
-# 
+#
 # https://forums.virtualbox.org/viewtopic.php?f=25&t=99390
 

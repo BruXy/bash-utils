@@ -1,42 +1,45 @@
+execute pathogen#infect()
+
 "set all -- zobrazi vsechny nastavene volby
 "set volba? -- ukaze hodnotu prisluse volby
 if &term=="rxvt" || &term=="screen.rxvt"
-	" Initial state
-	let MODE="Command"
+    " Initial state
+    let MODE="Command"
 
-	function InsertState()
-	" prefix g: to acces global variable
-	  if g:MODE == "Insert"
-		 let g:MODE = "Replace"
-		 startreplace
-	  elseif g:MODE == "Replace"
-		 let g:MODE = "Insert"
-		 startinsert
-	  endif
-	endfunction
+    function InsertState()
+    " prefix g: to acces global variable
+      if g:MODE == "Insert"
+         let g:MODE = "Replace"
+         startreplace
+      elseif g:MODE == "Replace"
+         let g:MODE = "Insert"
+         startinsert
+      endif
+    endfunction
 
-	" Entering Insert mode from Command
-	map <c-t> :let MODE="Insert" \| :startinsert<CR>
+    " Entering Insert mode from Command
+    map <c-t> :let MODE="Insert" \| :startinsert<CR>
 
-	" Pressing Insert in insert-mode swithes between Insert/Replace
-	" <C-o> + :command does not move cursor left, like pressing <Esc>.
-	imap <c-t> <C-O>:call InsertState()<CR>
-	map <ESC>[F    <End>
-	map <ESC>[H    <Home>
-	imap <ESC>[F    <End>
-	imap <ESC>[H    <Home>
+    " Pressing Insert in insert-mode swithes between Insert/Replace
+    " <C-o> + :command does not move cursor left, like pressing <Esc>.
+    imap <c-t> <C-O>:call InsertState()<CR>
+    map <ESC>[F    <End>
+    map <ESC>[H    <Home>
+    imap <ESC>[F    <End>
+    imap <ESC>[H    <Home>
 endif
 
 "if $lang=="cs_CZ.iso-8859-2"
 "    set encoding=iso-8859-2
-"	colorscheme bruxy
+"    colorscheme bruxy
 "else
 "    set encoding=utf-8
-"	colorscheme bruxy " je v $HOME/.vim/colors
+"    colorscheme bruxy " je v $HOME/.vim/colors
 "endif
 
 set encoding=utf-8
-colorscheme bruxy
+"colorscheme bruxy
+colorscheme vividchalk
 
 set nocompatible
 set undolevels=1000
