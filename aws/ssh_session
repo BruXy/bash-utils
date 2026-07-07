@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# Open port forwarding to an EC2 instance using AWS Systems Manager (SSM)
+#
+EC2_ID=${1:?"Usage: $0 <EC2_INSTANCE_ID>"}
+REMOTE_PORT=22
+LOCAL_PORT=${2:-1234}
+PUBLIC_SSH_KEY=~/.ssh/aws_session.pub
+PRIVEATE_SSH_KEY=~/.ssh/aws_session
+USER=ssm-user
+
+if [ ! -f "$SSH_KEY" ]; then
+  printf "Missing SSH key: %s\n" "$SSH_KEY"
+  exit 1
+fi
+
+# Inject the public key into the EC2 instance's authorized_keys file using AWS Systems Manager (SSM)
+aws ssm send-command \
+  --instance-ids $EC2_ID \
+  --document-name AWS-RunShellScript \
+  --parameters "commands=[
+    \"mkdir -p /home/$USER/.ssh\",
+    \"cat >>/home/$USER/authorized_keys<<EOF\",
+    \"$(cat $PUBLIC_SSH_KEY)\"
+    \"EOF\"
+  ]"
+
+# SSH Usage
+cat <<EOF
+Connect:
+ssh -i $SSH_KEY -p $LOCAL_PORT $USER@127.0.0.1
+
+Copy SCP:
+scp -i $SSH_KEY -P $LOCAL_PORT [FILES] $USER@127.0.0.1:/home/$USER/
+
+EOF
+
+# Create a local tunnel to the EC2 instance using SSH
+aws ssm start-session \
+  --target $EC2_ID \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters "{\"portNumber\":[\"$REMOTE_PORT\"],\"localPortNumber\":[\"$LOCAL_PORT\"]}"
+
