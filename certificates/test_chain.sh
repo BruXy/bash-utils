@@ -20,11 +20,13 @@
 #       in order to validate it in any case.
 #
 set -uo pipefail
-source libcert.sh
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+source $SCRIPT_DIR/libcert.sh
 
 INPUT=${1:?"Please provide certificate file!"}
 TMP_DIR=$(mktemp -d crt-chk-XXXX)
 TMP_PREFIX="crt-"
+ERR_CODE=0
 DEBUG=0
 
 function split_chain() {
@@ -62,6 +64,7 @@ function check_crt() {
     printf "Issued by: %s\n" "$cur_issuer"
     check_sans "$in"
     check_validity "$in"
+    get_fingerprint "$in"
 
     if [[ "$cur_subject" == "$cur_issuer" ]] ; then
         printf "Root certificate (or self-signed).\n"
@@ -73,9 +76,10 @@ function check_crt() {
         if [[ "$cur_issuer" == "$next_subject" ]] ; then
             check_crt "$next"
         else
-            printf "ERROR: Next certificate is not issuer of the previous one!\n"
+            printf "${RED_BOLD}ERROR: Next certificate is not issuer of the previous one!${RESET}\n"
             printf "Issuer: %s\n" "$next_subject"
-            exit 1
+            check_crt "$next"
+            ERR_CODE=1
         fi
     else
         return
@@ -88,7 +92,16 @@ function check_crt() {
 
 [ $DEBUG -ne 0 ] && printf "$0: Using temporary directory: %s\n" "$TMP_DIR"
 split_chain "$INPUT"
+
 # Recursive function start from the first item
 check_crt "${TMP_DIR}/${TMP_PREFIX}00"
+
 # Clean up
-rm -rf "$TMP_DIR"
+[ $DEBUG -ne 0 ] && rm -rf "$TMP_DIR"
+
+# $ERR_CODE is set inside check_crt() function
+if [ $ERR_CODE -ne 0 ] ; then
+    printf "\n${RED_BOLD}ERROR: Certificate chain is invalid, check order of certificates!${RESET}\n"
+    exit 1
+fi
+

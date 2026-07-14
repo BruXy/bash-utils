@@ -8,6 +8,9 @@ DATE_FMT='%Y-%b-%d %A'
 # %d ... Day of month (01-31)
 # %A ... Full weekday name (e.g. Friday)
 
+RED_BOLD='\033[1;31m'
+RESET='\033[0m'
+
 # MacOS uses LibreSSL by default. We install the latest OpenSSL version through brew and use it
 [[ -f "/usr/local/opt/openssl/bin/openssl" ]] && \
     export OPENSSL_BIN=/usr/local/opt/openssl/bin/openssl || \
@@ -46,9 +49,22 @@ function get_raw_certificate() {
 
 function get_issuer() {
     local input=${1:-/dev/stdin}
-    
-    $OPENSSL_BIN x509 -noout -issuer -nameopt RFC2253 -in $input |\
+
+    $OPENSSL_BIN x509 -noout -issuer -nameopt RFC2253 -in "$input" |\
         sed -e 's/issuer=//' | sed -e 's/[A-Z]*=//g' | sed -e 's/,/, /g'
+}
+
+function get_subject() {
+    local input=${1:-/dev/stdin}
+
+    $OPENSSL_BIN x509 -noout -subject -nameopt RFC2253 -in "$input" |\
+        sed -e 's/^subject=//' | sed -e 's/[A-Z]*=//g' | sed -e 's/,/, /g'
+}
+
+function get_fingerprint() {
+    local input=${1:-/dev/stdin}
+
+    $OPENSSL_BIN x509 -noout -fingerprint -in "$input"
 }
 
 function check_expiration() {
@@ -59,6 +75,19 @@ function check_expiration() {
 
     unix2days $(date +%s -d "$not_after")
 }
+
+
+function check_sans() {
+    local input=${1:-/dev/stdin}
+
+    retval=$(openssl x509 -noout -ext subjectAltName -in "$input" 2>&1)
+    if [[ "$retval" != "No extensions in certificate" ]] ; then
+        grep 'DNS:' <<< "$retval" | sed -e 's/^[[:space:]]*//g' -e 's/DNS:/& /g'
+    else
+        return
+    fi
+}
+
 
 function time_unix2date() {
     local unix_time=$1
