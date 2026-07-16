@@ -48,6 +48,7 @@ alias vimdiff="vimdiff -c 'set diffopt+=iwhiteall' "
 
 
 function git-checkout() {
+    local BRANCH_PREFIX=${BRANCH_PREFIX:-"feature"}
     [[ "$1" == "-b" ]] && shift
 
     url=$1
@@ -56,13 +57,15 @@ function git-checkout() {
     info=${2:-"Missing branch info!"}
     current=$(git rev-parse --abbrev-ref HEAD)
 
-    if [[ "$current" != master && "$current" != main ]] ; then
-        printf "This is not branched from master or main!\n" 1>&2
-        return 1
+    if [[ "$current" != master && "$current" != main && "$current" != develop ]] ; then
+        printf "This is not branched from master, main or develop!\n" 1>&2
+        printf "Press ENTER to continue or CTRL+C to abort.\n" 1>&2
+        read
     fi
 
-    git checkout -b ${branch}_${info}
-    printf "%s %s %s\n" "$url" "${branch}_${info}" "$(basename $(pwd))" >> ~/.jira_branches
+    local full_name="${BRANCH_PREFIX}/${branch}_${info}"
+    git checkout -b "$full_name"
+    printf "%s %s %s\n" "$url" "${full_name}" "$(basename $(pwd))" >> ~/.jira_branches
 }
 
 function git-show-names() {
@@ -152,6 +155,24 @@ alias list-buckets='aws s3api list-buckets --query "Buckets[].Name" | jq -r sort
 alias list-lambdas='aws lambda list-functions --query="Functions[].FunctionName" | jq -r sort[]'
 alias log-groups='aws logs describe-log-groups --query "logGroups[].logGroupName"'
 alias dynamodb-tables='aws dynamodb list-tables --query "TableNames[]" --output text'
+
+function list-ec2() {
+aws ec2 describe-instances \
+    --filters Name=instance-state-name,Values=running \
+    --query 'sort_by(Reservations[].Instances[], &Tags[?Key==`Name`]|[0].Value)[].{
+        _1Name:Tags[?Key==`Name`]|[0].Value,
+        _2Instance:InstanceId,
+        _3Type:InstanceType,
+        _4ImageId:ImageId,
+        _5AZ:Placement.AvailabilityZone
+        }' \
+    --output table | \
+        sed -e 's/_[1-9]\([^ ]\+\)/ \1 /g'
+}
+
+function session() {
+    aws ssm start-session --target $1
+}
 
 aws_instances ()
 {
