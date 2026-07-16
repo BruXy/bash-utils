@@ -6,32 +6,43 @@ EC2_ID=${1:?"Usage: $0 <EC2_INSTANCE_ID>"}
 REMOTE_PORT=22
 LOCAL_PORT=${2:-1234}
 PUBLIC_SSH_KEY=~/.ssh/aws_session.pub
-PRIVEATE_SSH_KEY=~/.ssh/aws_session
+PRIVATE_SSH_KEY=~/.ssh/aws_session
 USER=ssm-user
 
-if [ ! -f "$SSH_KEY" ]; then
-  printf "Missing SSH key: %s\n" "$SSH_KEY"
+if [ ! -f "$PUBLIC_SSH_KEY" -o ! -f "$PRIVATE_SSH_KEY" ]; then
+  printf "Missing SSH key!\n"
   exit 1
 fi
 
 # Inject the public key into the EC2 instance's authorized_keys file using AWS Systems Manager (SSM)
+printf "Sending the SSH key to the EC2 instance:\n"
 aws ssm send-command \
   --instance-ids $EC2_ID \
   --document-name AWS-RunShellScript \
   --parameters "commands=[
     \"mkdir -p /home/$USER/.ssh\",
-    \"cat >>/home/$USER/authorized_keys<<EOF\",
-    \"$(cat $PUBLIC_SSH_KEY)\"
-    \"EOF\"
-  ]"
+    \"echo '$(cat $PUBLIC_SSH_KEY)' >>/home/$USER/.ssh/authorized_keys\"
+  ]" \
+  --query 'Command.{CommandId:CommandId,InstanceId:InstanceIds}'
 
 # SSH Usage
 cat <<EOF
 Connect:
-ssh -i $SSH_KEY -p $LOCAL_PORT $USER@127.0.0.1
+ssh -o IdentitiesOnly=yes -i $PRIVATE_SSH_KEY -p $LOCAL_PORT $USER@127.0.0.1
 
 Copy SCP:
-scp -i $SSH_KEY -P $LOCAL_PORT [FILES] $USER@127.0.0.1:/home/$USER/
+scp -o IdentitiesOnly=yes -i $PRIVATE_SSH_KEY -P $LOCAL_PORT [FILES] $USER@127.0.0.1:/home/$USER/
+
+Copy rsync:
+rsync -avHPS --rsh="ssh -o IdentitiesOnly=yes -i $PRIVATE_SSH_KEY -p $LOCAL_PORT" [FILES] $USER@$127.0.0.1:/home/$USER/
+
+Configure your ~/.ssh/config (then use only 'ssh ec2-ssm' to connect):
+Host ec2-ssm
+    HostName 127.0.0.1
+    Port $LOCAL_PORT
+    User $USER
+    IdentityFile $PRIVATE_SSH_KEY
+    IdentitiesOnly yes
 
 EOF
 
