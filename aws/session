@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Create AWS Systems Manager session
+# ==================================
+#
+# Usage:
+#   session [Instance-Id]
+#
+# If instance Id is not provided the script will get list of
+# names and ids to select from.
+#
+
+selection="$1"
+if [ -z "$selection" ]; then
+    mapfile -t instance_list < <(aws ec2 describe-instances \
+        --filters Name=instance-state-name,Values=running \
+        --query 'sort_by(Reservations[].Instances[], &Tags[?Key==`Name`]|[0].Value)[].{
+                Name:Tags[?Key==`Name`]|[0].Value,
+                Instance:InstanceId
+             }' | jq -r '.[]|"\(.Name)|\(.Instance)"' )
+
+    declare -A ec2_map
+    IFS=$'\n'
+    for item in ${instance_list[*]}; do
+        name=${item%%|*}
+        id=${item#*|}
+        ec2_map["$name ($id)"]="$id"
+    done
+
+    echo "Select instance:"
+    select name in "${!ec2_map[@]}"; do
+        [[ -n "$name" ]] || continue
+        selection="${ec2_map[$name]}"
+        break
+    done | sort
+fi
+
+echo "Connecting to: $selection"
+aws ssm start-session --target $selection
+
