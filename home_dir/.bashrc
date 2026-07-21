@@ -170,10 +170,6 @@ aws ec2 describe-instances \
         sed -e 's/_[1-9]\([^ ]\+\)/ \1 /g'
 }
 
-function session() {
-    aws ssm start-session --target $1
-}
-
 aws_instances ()
 {
     local aws_region;

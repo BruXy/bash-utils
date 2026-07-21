@@ -9,15 +9,18 @@
 # If instance Id is not provided the script will get list of
 # names and ids to select from.
 #
+set - 
 
 selection="$1"
 if [ -z "$selection" ]; then
+    COLUMNS=20
     mapfile -t instance_list < <(aws ec2 describe-instances \
         --filters Name=instance-state-name,Values=running \
         --query 'sort_by(Reservations[].Instances[], &Tags[?Key==`Name`]|[0].Value)[].{
                 Name:Tags[?Key==`Name`]|[0].Value,
                 Instance:InstanceId
-             }' | jq -r '.[]|"\(.Name)|\(.Instance)"' )
+             }' | jq -r '.[]|"\(.Name)|\(.Instance)"'
+    )
 
     declare -A ec2_map
     IFS=$'\n'
@@ -27,12 +30,16 @@ if [ -z "$selection" ]; then
         ec2_map["$name ($id)"]="$id"
     done
 
+    # Getting keys from hash map will return them unsorted,
+    # this will return the sorted list of keys:
+    sorted_list=( $(for i in "${!ec2_map[@]}"; do echo $i; done | sort -f) )
+
     echo "Select instance:"
-    select name in "${!ec2_map[@]}"; do
+    select name in "${sorted_list[@]}"; do
         [[ -n "$name" ]] || continue
         selection="${ec2_map[$name]}"
         break
-    done | sort
+    done
 fi
 
 echo "Connecting to: $selection"
