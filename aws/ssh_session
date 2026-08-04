@@ -2,16 +2,26 @@
 #
 # Open port forwarding to an EC2 instance using AWS Systems Manager (SSM)
 #
-EC2_ID=${1:?"Usage: $0 <EC2_INSTANCE_ID>"}
+source libaws.sh
+
+EC2_ID="${1}"
 REMOTE_PORT=22
 LOCAL_PORT=${2:-1234}
 PUBLIC_SSH_KEY=~/.ssh/aws_session.pub
 PRIVATE_SSH_KEY=~/.ssh/aws_session
 USER=ssm-user
+_SSH_OPTS="-o IdentitiesOnly=yes -o StrictHostKeychecking=no -i $PRIVATE_SSH_KEY"
 
 if [ ! -f "$PUBLIC_SSH_KEY" -o ! -f "$PRIVATE_SSH_KEY" ]; then
   printf "Missing SSH key!\n"
   exit 1
+fi
+
+# If no instance id is provided, get the list of instances and prompt the user to select one
+if [ -z "$EC2_ID" ]; then
+    eval ec2_list="$(get_ec2_list)"
+    echo "Select instance:"
+    EC2_ID=$(select_ec2 "${ec2_list[@]}")
 fi
 
 # Inject the public key into the EC2 instance's authorized_keys file using AWS Systems Manager (SSM)
@@ -28,13 +38,13 @@ aws ssm send-command \
 # SSH Usage
 cat <<EOF
 Connect:
-ssh -o IdentitiesOnly=yes -i $PRIVATE_SSH_KEY -p $LOCAL_PORT $USER@127.0.0.1
+ssh $_SSH_OPTS -p $LOCAL_PORT $USER@127.0.0.1
 
 Copy SCP:
-scp -o IdentitiesOnly=yes -i $PRIVATE_SSH_KEY -P $LOCAL_PORT [FILES] $USER@127.0.0.1:/home/$USER/
+scp $_SSH_OPTS -P $LOCAL_PORT [FILES] $USER@127.0.0.1:/home/$USER/
 
 Copy rsync:
-rsync -avHPS --rsh="ssh -o IdentitiesOnly=yes -i $PRIVATE_SSH_KEY -p $LOCAL_PORT" [FILES] $USER@$127.0.0.1:/home/$USER/
+rsync -avHPS --rsh="$_SSH_OPTS -p $LOCAL_PORT" [FILES] $USER@$127.0.0.1:/home/$USER/
 
 Configure your ~/.ssh/config (then use only 'ssh ec2-ssm' to connect):
 Host ec2-ssm
@@ -43,7 +53,7 @@ Host ec2-ssm
     User $USER
     IdentityFile $PRIVATE_SSH_KEY
     IdentitiesOnly yes
-
+    StrictHostKeychecking no
 EOF
 
 # Create a local tunnel to the EC2 instance using SSH
