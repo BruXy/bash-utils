@@ -301,8 +301,8 @@ map <C-f> :set fileencodings=iso-8859-2<CR>:e! %<CR>
 "
 "let g:langpair="en|cz"
 
-" Function muster
-imap Ifunc <Esc>:r ~/.vim/func_muster.txt<CR>/:<CR>a<Space>
+" Function mustr
+imap Ifunc <Esc>:r ~/.vim/func_info.sh<CR>/:<CR>a<Space>
 
 " Jump to the last position when " reopening a file
 if has("autocmd")
