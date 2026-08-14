@@ -1,3 +1,4 @@
+
 # .bashrc
 
 # Source global definitions
@@ -12,7 +13,6 @@ export HISTCONTROL=ignoreboth:erasedups
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
 # export SYSTEMD_PAGER=
 
-
 #######
 # Git #
 #######
@@ -22,7 +22,6 @@ alias git-branches='( git remote show origin && git branch -a ) | sort -u'
 alias git-log="git log --name-only --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit "
 alias git-short-log='git log --date=short --pretty=format:"%C(yellow)%h%Cblue%>(12)%ad %Cgreen%<(7)%aN%Cred%d %Creset%s" '
 alias git-status="git status | sed -e '/^Untracked/,\${/\.\./d}' "
-alias git-add-modif='git add $(git status | sed -ne "/\s\+modified:/{s/modified://;p}" )'
 alias git-reset-last='git reset --soft HEAD~1 '
 alias git-reset-last-hard='git reset --hard HEAD~1 '
 alias git-fetch='git fetch --all --tags --force'
@@ -44,6 +43,7 @@ alias git-pr-check='gh pr view --json url -q .url '
 alias gcm='git checkout master || git checkout main && git pull '
 alias gp='git-fetch && git pull'
 alias git-repo='( cdgr; grep url .git/config  | sed -e "s/^\s*url = //" -e "s/^.*@/https:\/\//" -e "sXcom:Xcom/X" -e "s/.git$//" ) '
+alias git-jira='grep $(git rev-parse --abbrev-ref HEAD) ~/.jira_branches | cut -d" " -f1'
 alias vimdiff="vimdiff -c 'set diffopt+=iwhiteall' "
 
 
@@ -127,8 +127,9 @@ alias tf_fmt='terraform fmt -recursive'
 alias tf_clear='rm -rf ./.terraform .terraform.lock.hcl'
 
 tf_state() {
+    TF_OPTIONS=${TF_OPTIONS:-""}
     local data="./tfplan-$$"
-    terraform plan -out=$data
+    terraform plan -out=$data $TF_OPTIONS
     terraform show -json $data | jqless
 }
 
@@ -148,7 +149,7 @@ tf_unlock() {
 #######
 
 alias aws_identity='aws sts get-caller-identity'
-alias aws_asg='aws autoscaling describe-auto-scaling-groups --query="AutoScalingGroups[].[AutoScalingGroupName,DesiredCapacity]" --out text'
+alias list-asg='aws autoscaling describe-auto-scaling-groups --query="AutoScalingGroups[].[AutoScalingGroupName,DesiredCapacity]" --out text'
 alias aws_sg='aws ec2 describe-security-groups --group-ids '
 alias aws_hw='aws ec2 describe-instance-types --instance-types '
 alias list-buckets='aws s3api list-buckets --query "Buckets[].Name" | jq -r sort[]'
@@ -214,6 +215,13 @@ alias region='printf "Current AWS region: %s\n" "$AWS_DEFAULT_REGION"
         export AWS_DEFAULT_REGION=$region
         break
     done'
+
+function list_regions() {
+    aws account list-regions |\
+        jq -r '.Regions[]
+               | select(.RegionOptStatus == "ENABLED_BY_DEFAULT")
+               | .RegionName'
+}
 
 ########
 # Tmux #
@@ -346,18 +354,18 @@ function grepfiles() {
         if [[ "$arg" == -* ]]; then
             opt+="$arg "
         else
-            params+="$arg "
+            params+="$arg"
         fi
         shift
     done
 
-    if [[ $(git rev-parse --is-inside-work-tree) == "true" ]] ; then
+    if [[ $(git rev-parse --is-inside-work-tree >& /dev/null ) == "true" ]] ; then
         [ $HELP -eq 1 ] && { git grep -h ; return; }
         git grep $opt $params
     else
         [ $HELP -eq 1 ] && { grep -h ; return; }
         find . -path "*/.terraform" -prune -false -o -type f -print0 |\
-            xargs --null grep -n $opt "$params"
+            xargs --null grep -n $opt --color=always "$params"
     fi
 }
 
@@ -409,7 +417,9 @@ get_aws_info() {
         printf ""
         return
     fi
-
+    if [[ -n "$AWS_ORG_ID" ]] ; then
+        printf "\342\224\200[$color%s\033[0m]" "$AWS_ORG_ID"
+    fi
     if [[ -n "$AWS_DEFAULT_REGION" ]] ; then
         printf "\342\224\200[$color%s\033[0m]" "$AWS_DEFAULT_REGION"
     fi
@@ -556,5 +566,4 @@ GOLANG_VERSION=1.25.4
 export GOROOT=$HOME/bin/go-${GOLANG_VERSION}
 #export GOPATH=$HOME/go
 export PATH=$GOROOT/bin:$PATH #:$GOPATH/bin
-
 

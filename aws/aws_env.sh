@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# aenv -- AWS Provile selector
+# aenv -- AWS Profile selector
 # ============================
 #
 # To use this script read it in current shell with `source ./aws_env.sh` and
@@ -74,15 +74,26 @@ function aenv() {
     ENV_REGEX=${1:-.}
     read_profiles
     COLUMNS=20
-    select profile in ${PROFILES[*]}
-    do
-        selected=$(sed -e 's|^\x1b.*[0-9]m\([^/]*\)/.*|\1|g' <<< "$profile")
-        region=$(sed -e 's/.*(\(.*\))\x1b.*/\1/' <<< "$profile")
-        color=$(sed -n 's/^\x1b\[38;2;\([0-9;]*\)m.*/\1/p' <<< "$profile")
-        export AWS_DEFAULT_REGION=$region
-        export AWS_COLOR=$color
-        export AWS_PROFILE=$selected
-        break
-    done
+
+    if [ ${#PROFILES[@]} -eq 1 ]; then
+        profile=${PROFILES[0]}
+    else
+        printf "Select AWS profile:\n"
+        PS3=':> '
+        select profile in ${PROFILES[*]}
+        do
+            break
+        done
+    fi
+
+    selected=$(sed -e 's|^\x1b.*[0-9]m\([^/]*\)/.*|\1|g' <<< "$profile")
+    region=$(sed -e 's/.*(\(.*\))\x1b.*/\1/' <<< "$profile")
+    org_id=$(grep -Eo '[0-9]{12}' <<< "$profile")
+    color=$(sed -n 's/^\x1b\[38;2;\([0-9;]*\)m.*/\1/p' <<< "$profile")
+
+    export AWS_DEFAULT_REGION=$region
+    export AWS_COLOR=$color
+    export AWS_PROFILE=$selected
+    export AWS_ORG_ID=$org_id
 }
 
