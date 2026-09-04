@@ -4,11 +4,12 @@
 # ==========================
 #
 # Usage:
-# ./tfa [dry] FILE_LIST
+# [TF_OPTIONS=...] ./tfa [dry] FILE_LIST
 #
 # Parameter 'dry' will just display the command and you can
 # for example modify it prior the execution
 #
+# TF_OPTIONS can be used to pass additional options to terraform apply.
 
 if [[ "$1" == "dry" ]] ; then
     DRY_RUN=1
@@ -17,7 +18,8 @@ else
     DRY_RUN=0
 fi
 
-INPUT=$@
+INPUT=${@:?"Missing input file(s)!"}
+TF_OPTIONS=${TF_OPTIONS:-""}
 
 # Check files for resource and module blocks
 RESOURCES=(
@@ -32,7 +34,7 @@ done)
 )
 
 # Execute or display the apply command
-CMD="terraform apply $(printf ' -target=%s ' $(echo ${RESOURCES[*]}))"
+CMD="terraform apply $TF_OPTIONS $(printf ' -target=%s ' $(echo ${RESOURCES[*]}))"
 
 if [ $DRY_RUN -eq 1 ] ; then
     sed -e 's/ -target/\n    &/g' <<< "$CMD" | sed -e '$!s/$/ \\/'
