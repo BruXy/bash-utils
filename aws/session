@@ -10,7 +10,9 @@
 # names and ids to select from.
 #
 selection="$1"
-source libaws.sh
+
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+source $SCRIPT_DIR/libaws.sh
 
 # If no instance id is provided, get the list of instances and prompt the user to select one
 if [ -z "$selection" ]; then
