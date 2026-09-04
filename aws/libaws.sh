@@ -19,6 +19,11 @@ get_ec2_list() {
              }' | jq -r '.[]|"\(.Name)|\(.Instance)"'
     )
 
+    if [ ${#_instance_list[*]} -eq 0 ] ; then
+        printf "No EC2 instances found!\n" >&2
+        exit 1
+    fi
+
     # Format nicely with separated columns.
     mapfile -t _instance_list < <( for _i in "${_instance_list[@]}"
           do

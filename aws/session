@@ -9,7 +9,7 @@
 # If instance Id is not provided the script will get list of
 # names and ids to select from.
 #
-selection="$1"
+selection=${1:-""}
 
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 source $SCRIPT_DIR/libaws.sh
@@ -17,6 +17,7 @@ source $SCRIPT_DIR/libaws.sh
 # If no instance id is provided, get the list of instances and prompt the user to select one
 if [ -z "$selection" ]; then
     eval ec2_list="$(get_ec2_list)"
+    [[ "${ec2_list[0]}" == "" ]] && exit 1
     echo "Select instance:"
     selection=$(select_ec2 "${ec2_list[@]}")
 fi

@@ -21,6 +21,7 @@ fi
 # If no instance id is provided, get the list of instances and prompt the user to select one
 if [ -z "$EC2_ID" ]; then
     eval ec2_list="$(get_ec2_list)"
+    [[ "${ec2_list[0]}" == "" ]] && exit 1
     echo "Select instance:"
     EC2_ID=$(select_ec2 "${ec2_list[@]}")
 fi
