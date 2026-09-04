@@ -236,6 +236,12 @@ autocmd FileType SH : map <F10>  :!./%<cr>
 autocmd FileType SH : imap <F10> :!./%<cr>
 autocmd FileType SH : !echo "AAAAA"; sleep 1
 
+" Treat Terraform variable files as terraform syntax
+augroup terraform_tfvars
+  autocmd!
+  autocmd BufRead,BufNewFile *.tfvars set filetype=terraform
+augroup END
+
 " barevne logy ke commitum
 au! BufReadPost {COMMIT_EDITMSG,*/COMMIT_EDITMSG} set ft=gitcommit noml | norm 1G
 
