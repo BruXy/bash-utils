@@ -21,7 +21,7 @@ alias cdgr='cd $(git rev-parse --show-toplevel) '
 alias git-branches='( git remote show origin && git branch -a ) | sort -u'
 alias git-log="git log --name-only --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit "
 alias git-short-log='git log --date=short --pretty=format:"%C(yellow)%h%Cblue%>(12)%ad %Cgreen%<(7)%aN%Cred%d %Creset%s" '
-alias git-status="git status | sed -e '/^Untracked/,\${/\.\./d}' "
+alias git-status="git -c color.ui=always status | sed -e '/^Untracked/,\${/\.\./d}' "
 alias git-reset-last='git reset --soft HEAD~1 '
 alias git-reset-last-hard='git reset --hard HEAD~1 '
 alias git-fetch='git fetch --all --tags --force'
@@ -30,6 +30,7 @@ alias git-add-modified='git status | grep modified | cut -d: -f2 | xargs git add
 alias git-compare-master="git diff --name-status master"
 alias this-branch="git rev-parse --abbrev-ref HEAD"
 alias git-rebase-master='git-fetch && git pull --rebase --autostash origin master || git pull --rebase --autostash origin main'
+alias git-rebase-develop='git-fetch && git pull --rebase --autostash origin develop'
 alias gh-search='gh search issues --repo advthreat/tenzin '
 alias git-diff='git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" --abbrev-commit --date=relative'
 alias git-pull-origin='git pull origin $(this-branch)'
@@ -94,7 +95,7 @@ source ~/.git-completion.bash
 # Terraform  #
 ##############
 
-alias tf_list='terraform state list | sort -u | sed -e "s/^\(.*\)/\1/" | column -t -s" "'
+alias tf_list='terraform state list | sort '
 alias tf_log='printf "Current TF_LOG=\"%s\"\n" $TF_LOG
 
     debug_level=(
@@ -125,10 +126,11 @@ alias uncolor='sed -e "s/\x1b\[[0-9;]*m//g"'
 alias tf_fmt_check='terraform fmt -check -diff -recursive'
 alias tf_fmt='terraform fmt -recursive'
 alias tf_clear='rm -rf ./.terraform .terraform.lock.hcl'
+alias tf_schema='terraform providers schema -json | jq . '
 
 tf_state() {
     TF_OPTIONS=${TF_OPTIONS:-""}
-    local data="./tfplan-$$"
+    local data="./tfplan-$(date +%F-%T)"
     terraform plan -out=$data $TF_OPTIONS
     terraform show -json $data | jqless
 }
@@ -156,6 +158,21 @@ alias list-buckets='aws s3api list-buckets --query "Buckets[].Name" | jq -r sort
 alias list-lambdas='aws lambda list-functions --query="Functions[].FunctionName" | jq -r sort[]'
 alias log-groups='aws logs describe-log-groups --query "logGroups[].logGroupName"'
 alias dynamodb-tables='aws dynamodb list-tables --query "TableNames[]" --output text'
+alias list-zones='aws route53 list-hosted-zones --query "sort_by(HostedZones,&Name)[].[Name,Id]" --output table'
+
+function list-route53() {
+    local zone_id=${1:-"Missing hosted zone id!"}
+    local output=${2:-"short"}
+
+    if [[ $output == "short" ]] ; then
+        local query_str="--query 'ResourceRecordSets[].[Name,Type,TTL]' --output table"
+    else # long
+        local query_str="--output json"
+    fi
+
+    eval aws route53 list-resource-record-sets --hosted-zone-id $zone_id \
+        $query_str
+}
 
 function list-ec2() {
 aws ec2 describe-instances \
@@ -165,7 +182,8 @@ aws ec2 describe-instances \
         _2Instance:InstanceId,
         _3Type:InstanceType,
         _4ImageId:ImageId,
-        _5AZ:Placement.AvailabilityZone
+        _5AZ:Placement.AvailabilityZone,
+        _6IP:join(`, `, NetworkInterfaces[].PrivateIpAddress)
         }' \
     --output table | \
         sed -e 's/_[1-9]\([^ ]\+\)/ \1 /g'
@@ -269,7 +287,7 @@ function ls() {
 
     if [ -t 1 ] ; then
         # Output to TTY
-        eza -a --icons $*
+        eza -a --icons=always $*
     else
         /usr/bin/ls -a $*
     fi
@@ -376,7 +394,7 @@ function openssl_info(){
         openssl x509  -noout -text -in $INPUT
     else
     # Check for host
-        echo | openssl s_client -showcerts -connect $INPUT:443
+        echo | openssl s_client -showcerts -connect $INPUT
     fi
 }
 
@@ -394,7 +412,7 @@ function jqless() {
 parse_git_branch() {
     local branch=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
     if [[ -n "$branch" ]]; then
-        printf "(\e[35m%s\e[0;37m)\342\224\200" $branch
+        printf "(\e[35m%s\e[0;37m)\342\224\200" "$branch"
     else
         printf ""
     fi
