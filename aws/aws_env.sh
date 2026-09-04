@@ -75,7 +75,10 @@ function aenv() {
     read_profiles
     COLUMNS=20
 
-    if [ ${#PROFILES[@]} -eq 1 ]; then
+    if [ ${#PROFILES[@]} -eq 0 ]; then
+        printf "No AWS profiles found!\n"
+        return 1
+    elif [ ${#PROFILES[@]} -eq 1 ]; then
         profile=${PROFILES[0]}
     else
         printf "Select AWS profile:\n"
