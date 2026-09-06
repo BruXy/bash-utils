@@ -8,6 +8,14 @@ HOME_SYM_LINKS=(
 
 SOURCE_SYM_LINKS=(
     ../aws/aws_env.sh
+    ../terraform/tflog
+)
+
+HOME_BIN_SYM_LINKS=(
+    ../aws/session
+    ../aws/ssh_session
+    ../aws/libaws.sh
+    ../terraform/tfa
 )
 
 TIME_STAMP=$(date +%Y%m%d%H%M)
@@ -32,9 +40,9 @@ do
     fi
 done
 
-for file in ${SOURCE_SYM_LINKS[*]}
+for file in ${HOME_BIN_SYM_LINKS[*]}
 do
-    symlink=$HOME/.bash_sources/$(basename $file)
+    symlink=$HOME/bin/$(basename $file)
     if [ -L $symlink ] ; then
         printf "Skipped symlink: %s\n" "$(stat --format=%N $symlink)"
     else
