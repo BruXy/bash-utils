@@ -159,6 +159,9 @@ alias list-lambdas='aws lambda list-functions --query="Functions[].FunctionName"
 alias log-groups='aws logs describe-log-groups --query "logGroups[].logGroupName"'
 alias dynamodb-tables='aws dynamodb list-tables --query "TableNames[]" --output text'
 alias list-zones='aws route53 list-hosted-zones --query "sort_by(HostedZones,&Name)[].[Name,Id]" --output table'
+alias list-certs='aws acm list-certificates \
+        --query "CertificateSummaryList[].[DomainName,CertificateArn]" \
+        --output text'
 
 function list-route53() {
     local zone_id=${1:-"Missing hosted zone id!"}
