@@ -331,6 +331,7 @@ alias iso2utf='iconv -f iso-8859-1 -t utf-8 '
 alias myip='curl -s ipinfo.io | jq .'
 alias geeqie='geeqie --disable-clutter '
 alias dosmount='VBoxManage internalcommands createrawvmdk -filename "dos.vmdk" -rawdisk /dev/sdb '
+alias workdays='cal -m | sed -e 1,2d | cut -b 1-15 | wc -w'
 #export SDL_VIDEO_FULLSCREEN_HEAD=0
 
 function bzip_stout() {

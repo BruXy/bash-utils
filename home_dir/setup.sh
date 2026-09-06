@@ -1,3 +1,4 @@
+#!/bin/bash
 GIT_PUBLIC=$HOME/GIT
 LOCAL_BIN=$HOME/bin
 mkdir -p $HOME/.bash_sources
@@ -18,6 +19,7 @@ PACKAGES=(
   terraform
   tmux
   tmux-powerline
+  uv
   vim
   vim-pathogen
   awesome-vim-colorschemes
