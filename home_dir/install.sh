@@ -9,6 +9,7 @@ HOME_SYM_LINKS=(
 SOURCE_SYM_LINKS=(
     ../aws/aws_env.sh
     ../terraform/tflog
+    ../aws/setenv.sh
 )
 
 HOME_BIN_SYM_LINKS=(

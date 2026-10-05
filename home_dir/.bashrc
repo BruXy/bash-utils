@@ -1,4 +1,8 @@
 
+# Kiro CLI pre block. Keep at the top of this file.
+[[ -f "${HOME}/.local/share/kiro-cli/shell/bashrc.pre.bash" ]] && builtin source "${HOME}/.local/share/kiro-cli/shell/bashrc.pre.bash"
+
+
 # .bashrc
 
 # Source global definitions
@@ -43,10 +47,10 @@ alias git-link='~/.git/hooks/pre-push'
 alias git-pr-check='gh pr view --json url -q .url '
 alias gcm='git checkout master || git checkout main && git pull '
 alias gp='git-fetch && git pull'
-alias git-repo='( cdgr; grep url .git/config  | sed -e "s/^\s*url = //" -e "s/^.*@/https:\/\//" -e "sXcom:Xcom/X" -e "s/.git$//" ) '
+alias git-repo='( cdgr; grep -E "^\s*url" .git/config  | sed -e "s/^\s*url = //" -e "s/^.*@/https:\/\//" -e "sXcom:Xcom/X" -e "s/.git$//" ) '
 alias git-jira='grep $(git rev-parse --abbrev-ref HEAD) ~/.jira_branches | cut -d" " -f1'
 alias vimdiff="vimdiff -c 'set diffopt+=iwhiteall' "
-
+alias gg='git grep '
 
 function git-checkout() {
     local BRANCH_PREFIX=${BRANCH_PREFIX:-"feature"}
@@ -155,13 +159,16 @@ alias list-asg='aws autoscaling describe-auto-scaling-groups --query="AutoScalin
 alias aws_sg='aws ec2 describe-security-groups --group-ids '
 alias aws_hw='aws ec2 describe-instance-types --instance-types '
 alias list-buckets='aws s3api list-buckets --query "Buckets[].Name" | jq -r sort[]'
-alias list-lambdas='aws lambda list-functions --query="Functions[].FunctionName" | jq -r sort[]'
+alias list-lambdas='aws lambda list-functions --query="Functions[].[FunctionName,FunctionArn]" --out text | sort'
 alias log-groups='aws logs describe-log-groups --query "logGroups[].logGroupName"'
 alias dynamodb-tables='aws dynamodb list-tables --query "TableNames[]" --output text'
 alias list-zones='aws route53 list-hosted-zones --query "sort_by(HostedZones,&Name)[].[Name,Id]" --output table'
 alias list-certs='aws acm list-certificates \
         --query "CertificateSummaryList[].[DomainName,CertificateArn]" \
         --output text'
+alias list-nlb='aws elbv2 describe-load-balancers --query "LoadBalancers[*].[LoadBalancerName,LoadBalancerArn]" --out text'
+alias list-secrets="aws secretsmanager list-secrets --query 'SecretList[*].[Name,Description]' --output table"
+alias get-secret="aws secretsmanager get-secret-value --query SecretString --secret-id "
 
 function list-route53() {
     local zone_id=${1:-"Missing hosted zone id!"}
@@ -589,3 +596,7 @@ export GOROOT=$HOME/bin/go-${GOLANG_VERSION}
 #export GOPATH=$HOME/go
 export PATH=$GOROOT/bin:$PATH #:$GOPATH/bin
 
+
+
+# Kiro CLI post block. Keep at the bottom of this file.
+[[ -f "${HOME}/.local/share/kiro-cli/shell/bashrc.post.bash" ]] && builtin source "${HOME}/.local/share/kiro-cli/shell/bashrc.post.bash"
