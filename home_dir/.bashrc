@@ -169,6 +169,9 @@ alias list-certs='aws acm list-certificates \
 alias list-nlb='aws elbv2 describe-load-balancers --query "LoadBalancers[*].[LoadBalancerName,LoadBalancerArn]" --out text'
 alias list-secrets="aws secretsmanager list-secrets --query 'SecretList[*].[Name,Description]' --output table"
 alias get-secret="aws secretsmanager get-secret-value --query SecretString --secret-id "
+alias list-roles="aws iam list-roles --query='Roles[].[RoleName]' --out text"
+alias list-apis="aws apigateway get-rest-apis   --query 'items[*].[name,id]' --output table && \
+    aws apigatewayv2 get-apis "
 
 function list-route53() {
     local zone_id=${1:-"Missing hosted zone id!"}

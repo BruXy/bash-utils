@@ -22,6 +22,7 @@ PACKAGES=(
   uv
   vim
   vim-pathogen
+  yamllint
   awesome-vim-colorschemes
   # AWS session manager:
   # https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
@@ -85,6 +86,10 @@ curl -fsSL https://gh.io/copilot-install | PREFIX=$HOME bash
 # $LOCAL_BIN.
 curl -fsSL https://claude.ai/install.sh | bash
 ln -sf "$HOME/.local/bin/claude" "$LOCAL_BIN/claude"
+
+# Snyk.io
+# https://docs.snyk.io/developer-tools/snyk-cli/snyk-cli/install-the-snyk-cli
+npm install snyk -g
 
 # Notes:
 #

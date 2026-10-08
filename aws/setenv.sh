@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Accordint to the Terraform template, the AWS account ID is stored in the
+# According to the Terraform template, the AWS account ID is stored in the
 # config file. This script will read the config file and set the AWS
 # environment variables accordingly.
 #
