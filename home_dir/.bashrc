@@ -173,6 +173,12 @@ alias list-roles="aws iam list-roles --query='Roles[].[RoleName]' --out text"
 alias list-apis="aws apigateway get-rest-apis   --query 'items[*].[name,id]' --output table && \
     aws apigatewayv2 get-apis "
 
+function lambda-tail() {
+    local since=${2:-1d}
+    aws logs tail --since $since --format short \
+        /aws/lambda/"${1:?Missing AWS Lambda name!}"
+}
+
 function list-route53() {
     local zone_id=${1:-"Missing hosted zone id!"}
     local output=${2:-"short"}
@@ -286,8 +292,8 @@ if [ -d $SRC_DIR ] ; then
     done
 fi
 
-alias ll='eza --all --long --git --header --icons'
-alias lt='eza --all --tree --icons'
+alias ll='eza --all --long --git --header --icons=always'
+alias lt='eza --all --tree --icons=always'
 alias tree='eza --all -T --icons=always --color=always | less -F -r'
 
 # remove alias ls if it exists
