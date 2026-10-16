@@ -155,7 +155,8 @@ tf_unlock() {
 #######
 
 alias aws_identity='aws sts get-caller-identity'
-alias list-asg='aws autoscaling describe-auto-scaling-groups --query="AutoScalingGroups[].[AutoScalingGroupName,DesiredCapacity]" --out text'
+alias list-asg='aws autoscaling describe-auto-scaling-groups --query="AutoScalingGroups[].[AutoScalingGroupName,DesiredCapacity,LaunchTemplate.LaunchTemplateId]" --output table'
+alias get-lt="aws ec2 describe-launch-templates --query 'LaunchTemplates[].{Id:LaunchTemplateId,Name:LaunchTemplateName,Default:DefaultVersionNumber,Latest:LatestVersionNumber}' --output table --launch-template-ids "
 alias aws_sg='aws ec2 describe-security-groups --group-ids '
 alias aws_hw='aws ec2 describe-instance-types --instance-types '
 alias list-buckets='aws s3api list-buckets --query "Buckets[].Name" | jq -r sort[]'
@@ -235,6 +236,15 @@ function get_token() {
         --names=$secret \
         --with-decryption --query='Parameters[].Value' \
         --out text
+}
+
+function lt-set-default() {
+    local lt_id=${1:?Missing Launch Template Id.}
+    local version=${2:?Missing version.}
+
+    aws ec2 modify-launch-template \
+      --launch-template-id "$lt_id" \
+      --default-version $version
 }
 
 REGIONS=(
