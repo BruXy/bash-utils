@@ -1,6 +1,6 @@
 
-# Kiro CLI pre block. Keep at the top of this file.
-[[ -f "${HOME}/.local/share/kiro-cli/shell/bashrc.pre.bash" ]] && builtin source "${HOME}/.local/share/kiro-cli/shell/bashrc.pre.bash"
+# Added by Kiro CLI
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="${PATH:+$PATH:}$HOME/.local/bin" ;; esac
 
 
 # .bashrc
@@ -25,13 +25,13 @@ alias cdgr='cd $(git rev-parse --show-toplevel) '
 alias git-branches='( git remote show origin && git branch -a ) | sort -u'
 alias git-log="git log --name-only --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit "
 alias git-short-log='git log --date=short --pretty=format:"%C(yellow)%h%Cblue%>(12)%ad %Cgreen%<(7)%aN%Cred%d %Creset%s" '
-alias git-status="git -c color.ui=always status | sed -e '/^Untracked/,\${/\.\./d}' "
+alias git-status="git -c color.ui=always status | sed -e '/^Untracked/,\${/./d}' "
 alias git-reset-last='git reset --soft HEAD~1 '
 alias git-reset-last-hard='git reset --hard HEAD~1 '
 alias git-fetch='git fetch --all --tags --force'
 alias git-my-log="git log --pretty=format:'%h - %an, %ar : %s' | grep -E 'Bruchanov|BruXy' | grep -v Merge"
 alias git-add-modified='git status | grep modified | cut -d: -f2 | xargs git add '
-alias git-compare-master="git diff --name-status master"
+alias git-compare-master="git diff --name-status $(git remote show origin | sed -n 's/.*HEAD branch: //p')"
 alias this-branch="git rev-parse --abbrev-ref HEAD"
 alias git-rebase-master='git-fetch && git pull --rebase --autostash origin master || git pull --rebase --autostash origin main'
 alias git-rebase-develop='git-fetch && git pull --rebase --autostash origin develop'
@@ -51,6 +51,11 @@ alias git-repo='( cdgr; grep -E "^\s*url" .git/config  | sed -e "s/^\s*url = //"
 alias git-jira='grep $(git rev-parse --abbrev-ref HEAD) ~/.jira_branches | cut -d" " -f1'
 alias vimdiff="vimdiff -c 'set diffopt+=iwhiteall' "
 alias gg='git grep '
+alias git-untracked='git ls-files --others --exclude-standard . | grep -v "/"'
+alias git-merge-url='glab api "projects/:id/repository/commits/$(git rev-parse HEAD)/merge_requests" | jq -r ".[].web_url"'
+alias git-mr-main='glab mr create --fill --target-branch main --assignee "@me" --yes'
+alias git-mr-dev='glab mr create --fill --target-branch develop --assignee "@me" --yes'
+alias git-build='glab ci status | head -n3'
 
 function git-checkout() {
     local BRANCH_PREFIX=${BRANCH_PREFIX:-"feature"}
@@ -85,6 +90,11 @@ function git-pr() {
     branch="$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD)"
     url=$(grep -F "$branch" ~/.jira_branches | cut -d' ' -f1)
     gh pr create --base main --head $branch --title "$msg" --body "### References:$url"
+}
+
+function git-cicd-vars() {
+    repo="$(glab repo view --output json --jq '.web_url' | sed -e "s|https://gitlab.com/||")"
+    glab variable list -R "$repo" --per-page 100 --output json --jq '.[] | "\(.key)=\(.value)"'
 }
 
 GIT_COMPLETITION=~/.git-completion.bash
@@ -156,7 +166,6 @@ tf_unlock() {
 
 alias aws_identity='aws sts get-caller-identity'
 alias list-asg='aws autoscaling describe-auto-scaling-groups --query="AutoScalingGroups[].[AutoScalingGroupName,DesiredCapacity,LaunchTemplate.LaunchTemplateId]" --output table'
-alias get-lt="aws ec2 describe-launch-templates --query 'LaunchTemplates[].{Id:LaunchTemplateId,Name:LaunchTemplateName,Default:DefaultVersionNumber,Latest:LatestVersionNumber}' --output table --launch-template-ids "
 alias aws_sg='aws ec2 describe-security-groups --group-ids '
 alias aws_hw='aws ec2 describe-instance-types --instance-types '
 alias list-buckets='aws s3api list-buckets --query "Buckets[].Name" | jq -r sort[]'
@@ -173,6 +182,15 @@ alias get-secret="aws secretsmanager get-secret-value --query SecretString --sec
 alias list-roles="aws iam list-roles --query='Roles[].[RoleName]' --out text"
 alias list-apis="aws apigateway get-rest-apis   --query 'items[*].[name,id]' --output table && \
     aws apigatewayv2 get-apis "
+alias list-ecr-repos='aws ecr describe-repositories --query "repositories[][repositoryName]" --output text | sort'
+
+function ecr-images() {
+    local repo_name=${1:-"Missing ECR repository name!"}
+    aws ecr describe-images \
+        --repository-name $repo_name \
+        --query 'sort_by(imageDetails,&imagePushedAt)[].{tags:imageTags,pushed:imagePushedAt,digest:imageDigest}' \
+        --output table
+}
 
 function lambda-tail() {
     local since=${2:-1d}
@@ -207,6 +225,19 @@ aws ec2 describe-instances \
         }' \
     --output table | \
         sed -e 's/_[1-9]\([^ ]\+\)/ \1 /g'
+}
+
+function get-lt() {
+    local ids="$@"
+    aws ec2 describe-launch-templates \
+        --query "LaunchTemplates[?contains(LaunchTemplateName, \`gurobi\`)].{
+            _2Id:LaunchTemplateId,
+            _1Name:LaunchTemplateName,
+            _3Default:DefaultVersionNumber,
+            _4Latest:LatestVersionNumber}" \
+         --output table | \
+        sed -e 's/_[1-9]\([^ ]\+\)/ \1 /g'
+
 }
 
 aws_instances ()
@@ -617,5 +648,3 @@ export PATH=$GOROOT/bin:$PATH #:$GOPATH/bin
 
 
 
-# Kiro CLI post block. Keep at the bottom of this file.
-[[ -f "${HOME}/.local/share/kiro-cli/shell/bashrc.post.bash" ]] && builtin source "${HOME}/.local/share/kiro-cli/shell/bashrc.post.bash"

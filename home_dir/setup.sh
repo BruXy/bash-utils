@@ -6,6 +6,7 @@ mkdir -p $HOME/.bash_sources
 PACKAGES=(
   awscli
   dhcp-client
+  expect
   eza
   gh
   glab

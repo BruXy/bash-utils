@@ -1,7 +1,10 @@
 #!/bin/bash
 #
-# Terraform apply from files
-# ==========================
+# Terraform apply resources from files
+# ====================================
+#
+# Script is looking for resource and module usage and returning
+# them as 'target' when Terraform apply is executed.
 #
 # Usage:
 # [TF_OPTIONS=...] ./tfa [dry] FILE_LIST
@@ -10,6 +13,11 @@
 # for example modify it prior the execution
 #
 # TF_OPTIONS can be used to pass additional options to terraform apply.
+
+if [[ "$1" =~ ^-?-h(elp)?$ ]] ; then
+    sed -n '/^#!\/bin\/bash$/,/^$/{/^#!\/bin\/bash$/d;/^$/q;s/^#//;p}' $0
+    exit 0
+fi
 
 if [[ "$1" == "dry" ]] ; then
     DRY_RUN=1
