@@ -31,7 +31,7 @@ alias git-reset-last-hard='git reset --hard HEAD~1 '
 alias git-fetch='git fetch --all --tags --force'
 alias git-my-log="git log --pretty=format:'%h - %an, %ar : %s' | grep -E 'Bruchanov|BruXy' | grep -v Merge"
 alias git-add-modified='git status | grep modified | cut -d: -f2 | xargs git add '
-alias git-compare-master="git diff --name-status $(git remote show origin | sed -n 's/.*HEAD branch: //p')"
+alias git-compare-master='git diff --name-status $(git remote show origin | sed -n "s/.*HEAD branch: //p")'
 alias this-branch="git rev-parse --abbrev-ref HEAD"
 alias git-rebase-master='git-fetch && git pull --rebase --autostash origin master || git pull --rebase --autostash origin main'
 alias git-rebase-develop='git-fetch && git pull --rebase --autostash origin develop'
@@ -183,6 +183,33 @@ alias list-roles="aws iam list-roles --query='Roles[].[RoleName]' --out text"
 alias list-apis="aws apigateway get-rest-apis   --query 'items[*].[name,id]' --output table && \
     aws apigatewayv2 get-apis "
 alias list-ecr-repos='aws ecr describe-repositories --query "repositories[][repositoryName]" --output text | sort'
+
+function list-sg() {
+    local sg_id=$1
+    # If SG ID is not given, list Security Groups:
+    if [ -z "$sg_id" ] ; then
+        aws ec2 describe-security-groups \
+            --query "SecurityGroups[].[GroupId,Description]" \
+            --out table
+    fi
+    # If SG ID is given, list rules
+    if [[ "$sg_id" =~ ^sg-([0-9a-f]{8}|[0-9a-f]{17})$ ]] ; then
+        aws ec2 describe-security-group-rules \
+            --color on \
+            --filters "Name=group-id,Values=$sg_id" \
+            --query 'sort_by(SecurityGroupRules, &CidrIpv4)[].{
+                     _1CIDR:CidrIpv4,
+                     _2From:FromPort,
+                     _3To:ToPort,
+                     _4Proto:IpProtocol,
+                     _5Egress:IsEgress,
+                     _6SourceSG:ReferencedGroupInfo.GroupId,
+                     _7Description:Description
+            }' \
+          --output table | sed -e 's/_[1-9]\([^ ]\+\)/ \1 /g'
+    fi
+}
+
 
 function ecr-images() {
     local repo_name=${1:-"Missing ECR repository name!"}
